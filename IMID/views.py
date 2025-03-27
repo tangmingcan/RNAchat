@@ -9,7 +9,7 @@ from sklearn.decomposition import PCA
 import umap.umap_ as umap
 import scanpy as sc
 import numpy as np
-from matplotlib import pyplot as plt
+from matplotlib import pyplot as plt, cm
 import hdbscan
 from threadpoolctl import threadpool_limits
 from sklearn.preprocessing import StandardScaler
@@ -19,6 +19,7 @@ import base64
 from django.db.models import Q
 from collections import defaultdict
 from django.contrib.auth import authenticate
+import seaborn as sns
 
 # gene_result.txt, genes_ncbi_proteincoding.py, go-basic.obo
 
@@ -126,16 +127,6 @@ def tab(request):
         )
     return render(request, "tab1.html", {"root": context})
       
-@auth_required
-def compICA(request):
-    checkRes = usrCheck(request)
-    if checkRes["status"] == 0:
-        return HttpResponse(checkRes["message"], status=400)
-    else:
-        usr = checkRes["usrData"]
-    preload = getColumnFields("0", request, usr)
-    preload = [i[0] for i in preload if i[1]=="1"]#Label
-    return render(request, "compTypeICA.html", { "root":{"labels":preload, "cID": usr.cID}})
 
 @auth_required        
 def compICAcohort(request):
@@ -164,17 +155,6 @@ def compICAall(request):
         ica_cohort = usr.ica_cohort[:3]
     #temp1=pd.concat([X11,X22],axis=1)#0
     return JsonResponse({"ica_cohort": ica_cohort,"ica_cohort_metagenes":(X11, X22)})  
-  
-@auth_required
-def compORA(request):
-    checkRes = usrCheck(request)
-    if checkRes["status"] == 0:
-        return HttpResponse(checkRes["message"], status=400)
-    else:
-        usr = checkRes["usrData"]
-    preload = getColumnFields("0", request, usr)
-    preload = [i[0] for i in preload if i[1]=="1"]
-    return render(request, "compTypeORA.html", { "root":{"labels":preload, "cID": usr.cID}})
 
 
 
@@ -197,9 +177,9 @@ def opExpression(request):
         files = request.FILES.getlist("files[]", None)
         new_exp_files = []
 
-        for f in files:
-            temp_file = UploadedFile(user=request.user, cID=cID, type1="exp", file=f)
-            new_exp_files.append(temp_file)
+        f=files[0]
+        temp_file = UploadedFile(user=request.user, cID=cID, type1="exp", file=f)
+        new_exp_files.append(temp_file)
         UploadedFile.objects.bulk_create(new_exp_files)
         return getExpression(request, cID)
     elif request.method == "GET":
@@ -249,258 +229,6 @@ Third, join temp0 and dfs1;
 
 
 @auth_required
-def edaIntegrate(request):
-    checkRes = usrCheck(request, 0)
-    if checkRes["status"] == 0:
-        return HttpResponse(checkRes["message"], status=400)
-    else:
-        usr = checkRes["usrData"]
-    cID = request.GET.get("cID", None)
-
-    corrected = request.GET.get("correct", "Combat")
-    log2 = request.GET.get("log2", "No")
-    fr = request.GET.get("fr", "TSNE")
-    integrate = [i.strip() for i in request.GET.get("integrate", "").split(",")]
-    if "" in integrate:
-        integrate.remove("")
-
-    try:
-        usr.log2 = log2
-        if usr.save() is False:
-            return HttpResponse("Can't save user record", status=500)
-        result = runIntegrate.apply_async(
-            (request, integrate, cID, log2, corrected, usr, fr), serializer="pickle"
-        ).get()
-    except Exception as e:
-        return HttpResponse(str(e), status=500)
-    return HttpResponse("Operation successful.", status=200)
-
-
-@auth_required
-def eda(request):
-    checkRes = usrCheck(request)
-    if checkRes["status"] == 0:
-        return HttpResponse(checkRes["message"], status=400)
-    else:
-        usr = checkRes["usrData"]
-
-    adata = usr.getAnndata()
-    targetLabel = request.GET.get("label", "batch2")
-    color2 = adata.obs[targetLabel]  # temp.LABEL, temp.FileName
-    X2D = usr.getFRData()
-    traces = zip_for_vis(
-        X2D.tolist(), adata.obs["batch1"], adata.obs_names
-    )  # temp.FileName, temp.obs
-    traces1 = zip_for_vis(X2D.tolist(), color2, adata.obs_names)
-    labels = list(
-        MetaFileColumn.objects.filter(user=request.user, cID=usr.cID, label="1")
-        .all()
-        .values_list("colName", flat=True)
-    )
-    if "LABEL" in labels:
-        labels.remove("LABEL")
-        labels = ["LABEL"] + labels
-    context = {
-        "dfs1": traces,
-        "dfs2": traces1,
-        "labels": labels,
-        "method": usr.redMethod,
-    }
-    return JsonResponse(context)
-
-
-@auth_required
-def dgea(request):
-    checkRes = usrCheck(request)
-    if checkRes["status"] == 0:
-        return HttpResponse(checkRes["message"], status=400)
-    else:
-        usr = checkRes["usrData"]
-    targetLabel = request.GET.get("label", "batch2")
-    adata = usr.getAnndata()
-
-    clusters = request.GET.get("clusters", "default")
-    n_genes = request.GET.get("topN", 4)
-
-    try:
-        result = runDgea.apply_async(
-            (clusters, adata, targetLabel, n_genes), serializer="pickle"
-        ).get()
-    except Exception as e:
-        return HttpResponse(str(e), status=500)
-    if type(result) is list:
-        return JsonResponse(result, safe=False)
-    else:
-        response = HttpResponse(content_type="text/csv")
-        response["Content-Disposition"] = "attachment; filename=topGenes.csv"
-        result.to_csv(path_or_buf=response)
-        return response
-
-
-@auth_required
-def clustering(request):
-    checkRes = usrCheck(request)
-    if checkRes["status"] == 0:
-        return HttpResponse(checkRes["message"], status=400)
-    else:
-        usr = checkRes["usrData"]
-
-    cluster = request.GET.get("cluster", "LEIDEN")
-    param = request.GET.get("param", None)
-    if param is None:
-        return HttpResponse("Param is illegal!", status=400)
-    X2D = usr.getFRData()
-    if X2D is None:
-        return HttpResponse("Please run feature reduction first.", status=400)
-    X2D = X2D.tolist()
-    adata = usr.getAnndata()
-    try:
-        result = runClustering.apply_async(
-            (cluster, adata, X2D, usr, param), serializer="pickle"
-        ).get()
-    except Exception as e:
-        return HttpResponse(str(e), status=400)
-    return JsonResponse(result)
-
-
-@auth_required
-def clusteringAdvanced(request):
-    clientID = request.GET.get("cID", None)
-    if clientID is None:
-        return HttpResponse("clientID is Required", status=400)
-    if request.method == "GET" and "cluster" not in request.GET:
-        return render(request, "clustering_advance.html", {"cID": clientID})
-    else:
-        checkRes = usrCheck(request)
-        if checkRes["status"] == 0:
-            return HttpResponse(checkRes["message"], status=400)
-        else:
-            usr = checkRes["usrData"]
-        cluster = request.GET.get("cluster", "LEIDEN")
-        minValue = float(request.GET.get("min", "0"))
-        maxValue = float(request.GET.get("max", "1"))
-        level = int(request.GET.get("level", 3))
-        adata = usr.getAnndata().copy()
-        df = usr.getCorrectedCSV()[["LABEL"]]
-        if level > 10 or level <= 1:
-            return HttpResponse("Error for the input", status=400)
-        if cluster == "LEIDEN":
-            if minValue <= 0:
-                minValue = 0
-            if maxValue >= 2:
-                maxValue = 2
-            for i, parami in enumerate(np.linspace(minValue, maxValue, level)):
-                with threadpool_limits(limits=NUMBER_CPU_LIMITS, user_api="blas"):
-                    sc.pp.neighbors(adata, n_neighbors=40, n_pcs=40)
-                    sc.tl.leiden(adata, resolution=float(parami))
-                df["level" + str(i + 1)] = [
-                    "level" + str(i + 1) + "_" + str(j) for j in adata.obs["leiden"]
-                ]
-        elif cluster == "HDBSCAN":
-            if minValue <= 5:
-                minValue = 5
-            if maxValue >= 100:
-                maxValue = 100
-            for i, parami in enumerate(np.linspace(minValue, maxValue, level)):
-                df["level" + str(i + 1)] = [
-                    "level" + str(i + 1) + "_" + str(j)
-                    for j in hdbscan.HDBSCAN(min_cluster_size=int(parami)).fit_predict(
-                        adata.obsm["X_pca"]
-                    )
-                ]
-
-        result = fromPdtoSangkey(df)
-        return JsonResponse(result)
-
-
-@auth_required
-def advancedSearch(request):
-    # username = request.user.username
-    name = request.GET.get("name", None)
-    clientID = request.GET.get("cID", None)
-    if clientID is None:
-        return HttpResponse("clientID is Required", status=400)
-    res = {}
-    if name is None:
-        return render(request, "advancedSearch.html", {"clientID": clientID})
-    name = name.replace(" ", "")
-    res["name"] = name
-    url = "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=" + name
-    page = requests.get(url)
-    p = page.content.decode("utf-8").replace("\n", "")
-    if "GEO accession display tool" in p:
-        return HttpResponse("Could not find the cohort!", status=404)
-    m = re.search(
-        '(?<=\<tr valign="top"\>\<td nowrap\>Summary\</td\>\<td style="text-align: justify"\>)([\w\s,-.!"\(\):%]+)',
-        p,
-    )
-    if m is not None:
-        res["summary"] = m.group(1)
-    m = re.search(
-        '(?<=\<tr valign="top"\>\<td nowrap\>Overall design\</td\>\<td style="text-align: justify"\>)([\w\s,-.!"\(\):%]+)',
-        p,
-    )
-    if m is not None:
-        res["overAllDesign"] = m.group(1)
-    m = re.search(
-        '(\<table cellpadding="2" cellspacing="2" width="600"\>\<tr bgcolor="#eeeeee" valign="top"\>\<td align="middle" bgcolor="#CCCCCC"\>\<strong\>Supplementary file\</strong\>\</td\>)(.+)(\</tr\>\<tr\>\<td class="message"\>[\w\s]+\</td\>\</tr\>\</table\>)',
-        p,
-    )
-    if m is not None:
-        soup = BeautifulSoup(m.group(0), "html.parser")
-        ftp_tags = soup.find_all("a", string="(ftp)")
-        for ftp in ftp_tags:
-            ftp.decompose()  # remove all ftp nodes
-        custom_tags = soup.find_all("a", string="(custom)")
-        for cus in custom_tags:
-            cus.decompose()
-        td_tags = soup.find_all("td", class_="message")
-        for td in td_tags:
-            td.decompose()
-        td_tags = soup.find_all("td")
-        for td in td_tags:
-            if "javascript:" in str(td):
-                td.decompose()
-        res["data"] = str(soup).replace(
-            "/geo/download/", "https://www.ncbi.nlm.nih.gov/geo/download/"
-        )
-    if "TXT" in p:
-        res["txt"] = 1
-    else:
-        res["txt"] = 0
-    return JsonResponse(res)
-
-
-@auth_required
-def goenrich(request):
-    checkRes = usrCheck(request)
-    if checkRes["status"] == 0:
-        return HttpResponse(checkRes["message"], status=400)
-    else:
-        usr = checkRes["usrData"]   
-    cohort = request.GET.get("cohort", None)
-    metagene = request.GET.get("metagene", None)
-    if metagene is None:
-        return HttpResponse("Illegal Metagene Name.", status=400)
-    if cohort is None and (len(usr.metagenes)!=1 or len(usr.metageneCompose)==0):
-        return HttpResponse("Please run ICA first.", status=400)
-    if cohort is not None and len(usr.metagenes)!=4:
-        return HttpResponse("Please run ICA-cohort first.", status=400)
-    try:
-        if cohort is None or cohort=='A':
-            result = runTopFun.apply_async(
-                (usr.metageneCompose[0], metagene), serializer="pickle"
-            ).get()
-        else:
-            result = runTopFun.apply_async(
-                (usr.metageneCompose[1], metagene), serializer="pickle"
-            ).get()
-    except Exception as e:
-        return HttpResponse(str(e), status=400)
-    return JsonResponse(result, safe=False)
-
-
-@auth_required
 def downloadICA(request):
     checkRes = usrCheck(request)
     if checkRes["status"] == 0:
@@ -508,109 +236,14 @@ def downloadICA(request):
     else:
         usr = checkRes["usrData"]
     typ = request.GET.get("type", 'ica')
-    if typ=='ica':
-        if len(usr.metagenes)!=1:
-            return HttpResponse("Please run ICA first.", status=400)
-        result_df = usr.metagenes[0]
-    else:
-        if len(usr.metagenes)!=4:
-            return HttpResponse("Please run ICA-cohort first.", status=400)
-        X11, X12, X21, X22 = usr.metagenes
-        temp1 = pd.concat([X11,X22], axis=1)
-        temp2 = pd.concat([X12,X21], axis=1)
-        result_df = pd.concat([temp1, temp2], axis=0, join='inner')
+    if len(usr.metagenes)!=1:
+        return HttpResponse("Please run ICA first.", status=400)
+    result_df = usr.metagenes[0]
     response = HttpResponse(content_type="text/csv")
     response["Content-Disposition"] = "attachment; filename=ica.csv"
     result_df.to_csv(path_or_buf=response)
     return response
 
-
-@auth_required
-def downloadCorrected(request):
-    checkRes = usrCheck(request)
-    if checkRes["status"] == 0:
-        return HttpResponse(checkRes["message"], status=400)
-    else:
-        usr = checkRes["usrData"]
-    result_df = usr.getCorrectedCSV()
-    response = HttpResponse(content_type="text/csv")
-    response["Content-Disposition"] = "attachment; filename=corrected.csv"
-    result_df.to_csv(path_or_buf=response)
-    return response
-
-
-@auth_required
-def downloadCorrectedCluster(request):
-    checkRes = usrCheck(request)
-    if checkRes["status"] == 0:
-        return HttpResponse(checkRes["message"], status=400)
-    else:
-        usr = checkRes["usrData"]
-
-    result_df = usr.getCorrectedClusterCSV()
-    if result_df is None:
-        return HttpResponse("Please do clustering first.", status=400)
-    response = HttpResponse(content_type="text/csv")
-    response["Content-Disposition"] = "attachment; filename=correctedCluster.csv"
-    result_df.to_csv(path_or_buf=response)
-    return response
-
-
-@auth_required
-def candiGenes(request):
-    checkRes = usrCheck(request)
-    if checkRes["status"] == 0:
-        return HttpResponse(checkRes["message"], status=400)
-    else:
-        usr = checkRes["usrData"]
-
-    method = request.GET.get("method", None)
-    maxGene = 12
-    if method is None or method == "pca":
-        adata = usr.getAnndata()
-        n_pcs = 3
-        pcs_loadings = pd.DataFrame(adata.varm["PCs"][:, :n_pcs], index=adata.var_names)
-        pcs_loadings.dropna(inplace=True)
-        result = []
-        for i in pcs_loadings.columns:
-            result.extend(pcs_loadings.nlargest(2, columns=i).index.tolist())
-            result.extend(pcs_loadings.nsmallest(2, columns=i).index.tolist())
-        return JsonResponse(result, safe=False)
-    else:
-        markers = usr.getMarkers(method)
-        if markers is None:
-            return HttpResponse("Please run clustering method first.", status=400)
-        try:
-            clusters = set(markers.group)
-        except Exception as e:
-            return HttpResponse(
-                "There is no different values for the label you chose.", status=400
-            )
-        number = math.ceil(maxGene / len(clusters))
-        markers = markers.query("scores > 0")
-        result = (
-            markers.groupby("group")
-            .apply(lambda x: x.nsmallest(number, "pvals_adj"))
-            .names.tolist()
-        )
-        return JsonResponse(result, safe=False)
-
-
-
-@auth_required
-def GeneLookup(request):
-    geneList = request.GET.get("geneList", None)
-    if geneList is None:
-        return HttpResponse("Gene List is required", status=400)
-    try:
-        geneList = geneList.split(",")
-        geneList = [i for i in geneList if i != "None"]
-    except:
-        return HttpResponse("Gene List is illegal", status=400)
-    result = GeneID2SymID(geneList)
-    if result is None:
-        return HttpResponse("Gene List contains no Ensembl gene IDs (prefix \"ENSG\") to convert", status=400)
-    return JsonResponse(result, safe=False)
 
 
 @auth_required
@@ -663,7 +296,6 @@ def meta_columns(request):
         return JsonResponse(result, safe=False)
     elif request.method == "PUT":
         labels = request.GET.get("labels", None)
-        fr = request.GET.get("fr", "TSNE")
         if labels is None:
             return HttpResponse("Labels illegal.", status=400)
         labels = [i.strip() for i in labels.split(",")]
@@ -721,8 +353,6 @@ def meta_columns(request):
                     MetaFileColumn.objects.exclude(colName="LABEL").filter(
                         user=request.user, cID=cID
                     ).update(label="0")
-                X2D = runFeRed.apply_async((fr, usr), serializer="pickle").get()
-                usr.setFRData(X2D)
         except Exception as e:
             return HttpResponse("Labels creating Problem. " + str(e), status=400)
         finally:
@@ -834,10 +464,36 @@ def meta_column_values(request, colName):
             return HttpResponse("No such colName called:" + colName, status=400)
         elif col.label == "1":
             return HttpResponse("Please make {colName} inactive first.", status=400)
-        MetaFileColumn.objects.filter(
-            user=request.user, cID=usr.cID, colName=colName, label="0"
-        ).delete()
+            
+        try:
+            with transaction.atomic():
+                MetaFileColumn.objects.filter(
+                    user=request.user, cID=usr.cID, colName=colName, label="0"
+                ).delete()
+                usr.integrationData = usr.integrationData.drop(columns=[colName,])
+        except Exception as e:
+            return HttpResponse("Labels creating Problem. " + str(e), status=400)
+        finally:
+            if usr.save() is False:
+                return HttpResponse("Can't save user record", status=500)
         return HttpResponse("Delete {colName} Successfully.", status=200)
+        
+@auth_required
+def edaIntegrate(request):
+    checkRes = usrCheck(request, 0)
+    if checkRes["status"] == 0:
+        return HttpResponse(checkRes["message"], status=400)
+    else:
+        usr = checkRes["usrData"]
+    cID = request.GET.get("cID", None)
+
+    try:
+        result = runIntegrate.apply_async(
+            (request, cID, usr), serializer="pickle"
+        ).get()
+    except Exception as e:
+        return HttpResponse(str(e), status=500)
+    return HttpResponse("Operation successful.", status=200)
 
 from urllib.parse import unquote
 @auth_required
@@ -847,178 +503,33 @@ def ICAreport(request):
         return HttpResponse(checkRes["message"], status=400)
     else:
         usr = checkRes["usrData"]
+    cID = request.GET.get("cID", None)
+
     method = request.GET.get("method", 'ica')
-    imf = request.GET.get("imf","no")
-    if method=='ica_cohort':
-        imf='no'
-    p = request.GET.get('p', '')
-    p0 = unquote(request.GET.get('p0', ''))
-    p1 = unquote(request.GET.get('p1', ''))
-    bridge = request.GET.get('bridge','no')
-    if method =='ica_cohort' and (p0=='' or p1=='' or p==''):
-        return HttpResponse("Empty p0 or p1 or p.", status=400)
-    if p=='LABEL':
-        p='batch2'
-        
     adata = usr.getAnndata().copy()
     dfe, dfc = expression_clinic_split(adata)
     try:
-        dim = int(request.GET.get("dim",7))
+        dim = int(request.GET.get("dim",10))
     except Exception:
         return HttpResponse("Dim should be an integer", status=500)
     if dim >= dfe.shape[0]:
         return HttpResponse("Dimension is too large!" , status=500)     
-    if method=='ica':
-        try:
-            if imf=='yes':
-                imf_score = calculate_imf_scores.apply_async((dfe,),serializer="pickle")
-            metageneCompose, metagenes, _, _ = runICA.apply_async((dfe, dim,''),serializer="pickle").get()
-        except Exception as e:
-            return HttpResponse("ICA Failed:" + str(e), status=500)
-        usr.metagenes = [metagenes,]
-        usr.metageneCompose = [metageneCompose,]
-        if imf=='yes':
-            usr.imf = imf_score.get()[0]
-        else:
-            usr.imf = None
-        usr.ica_cohort = ()
-        if usr.save() is False:
-            return HttpResponse("Can't save user record", status=500)
-        if imf=='yes':
-            return render(request, "imf_template.html", {"svg_content": imf_score.get()[1], "title":"IMF Score Visualisation", "message":""})
-        else:
-            return HttpResponse("ICA Successful.", status=200)
-    elif method=='ica_cohort':
-        usr.imf = None
-        if p not in adata.obs_keys():
-            return HttpResponse("No such column:" +p, status=500)
-        dics = map_normalized_keys([p0,p1],set(adata.obs[p].to_list()))
-        if dics[p0] is None or dics[p1] is None:
-            return HttpResponse("No such value: "+p0+" / " +p1+" for column:" +p, status=500)
-        flag1 = (adata.obs[p]==dics[p0])      
-        flag2 = (adata.obs[p]==dics[p1])
-        if dim <= sum(flag1) and dim <= sum(flag2):            
-            try:
-                if bridge=="no":             
-                    metageneComposeA, metagenesXX11, metagenesXX12, sICA = runICA.apply_async((dfe, dim, p0[:3], flag1, flag2),serializer="pickle").get()
-                    metageneComposeB, metagenesXX21, metagenesXX22, _ = runICA.apply_async((dfe, dim, p1[:3], flag2, flag1),serializer="pickle").get()
-                    usr.metagenes = [metagenesXX11, metagenesXX12, metagenesXX21, metagenesXX22]
-                    usr.metageneCompose = [metageneComposeA, metageneComposeB]
-                else:
-                    if len(usr.metagenes)!=4:
-                        return HttpResponse("Run ICA-cohort without bridge first. ", status=500)  
-                    metageneComposeC, metagenesXX41, metagenesXX42, sICA = runICA.apply_async((dfe, dim, p1[:3], flag2, flag1),serializer="pickle").get()
-                    TEMP = usr.ica_cohort[3].transform(dfe[flag2])
-                    TEMP = pd.DataFrame(TEMP)
-                    TEMP.columns = usr.metagenes[0].columns.copy()
-                    TEMP.index = dfe[flag2].index.copy()
-                    usr.metagenes = [usr.metagenes[0], TEMP, metagenesXX41, metagenesXX42]
-                    usr.metageneCompose = [usr.metageneCompose[0], metageneComposeC]
-            except Exception as e:
-                return HttpResponse("ICA Failed:" + str(e), status=500)
-            usr.ica_cohort = (p, dics[p0], dics[p1], sICA)
-            # print(adata.shape, p, dics[p0], dics[p1], metagenesXX11.shape, metagenesXX12.shape)
-            # print(metagenesXX11)
-        else:
-            return HttpResponse("Dimension is too large for cohorts " +str(sum(flag1))+" vs "+str(sum(flag2)), status=500) 
-        if usr.save() is False:
-            return HttpResponse("Can't save user record", status=500)
-        return HttpResponse("ICA Successful.", status=200)
-    else:#PCA
-        try:
-            if imf=='yes':
-                imf_score = calculate_imf_scores.apply_async((dfe,),serializer="pickle")
-            metagenes = runPCA.apply_async((dfe, dim),serializer="pickle").get()
-        except Exception as e:
-            return HttpResponse("PCA Failed:" + str(e), status=500)
-        usr.metagenes = [metagenes,]
-        usr.metageneCompose = []
-        if imf=='yes':
-            usr.imf = imf_score.get()[0]
-        else:
-            usr.imf = None
-        usr.ica_cohort = ()
-        if usr.save() is False:
-            return HttpResponse("Can't save user record", status=500)
-        if imf=='yes':
-            return render(request, "imf_template.html", {"svg_content": imf_score.get()[1], "title":"IMF Score Visualization", "message":""})
-        else:
-            return HttpResponse("PCA Successful.", status=200)
-
-      
-
-          
-@auth_required
-def ORAreport(request):
-    checkRes = usrCheck(request)
-    if checkRes["status"] == 0:
-        return HttpResponse(checkRes["message"], status=400)
-    else:
-        usr = checkRes["usrData"]
-    db = request.GET.get("msigdb", 'reactome_pathways')
-    de = request.GET.get("diff", None)
-    group = request.GET.get("group", None)
-    top = request.GET.get("top", None)
-    if top is None and usr.ora is None:
-        return HttpResponse("Run ORA first.", status=500)
-    if top is None:
-        response = HttpResponse(content_type='text/csv')
-        response['Content-Disposition'] = 'attachment; filename="ora_data.csv"'
-        usr.ora.to_csv(response, index=False)
-        return response
-    if de is None or group is None:
-        return HttpResponse("Not enough parameters", status=500)
-    if de=='LABEL':
-        de='batch2'
-    msigdb = Msigdb.objects.filter(collection=db)
-    
-    if len(msigdb)==0:
-        return HttpResponse("Not found msigdb: "+db, status=500)
-    data_list = list(msigdb.values('symbol', 'collection', 'geneset'))
-    msigdb1 = pd.DataFrame(data_list)
-    msigdb1.columns = ['genesymbol', 'collection', 'geneset']
-    msigdb1 = msigdb1[~msigdb1.duplicated(['geneset', 'genesymbol'])]
-    
-    adata = usr.getAnndata().copy()
-    dfe, _ = expression_clinic_split(adata)
-    
-    adata1 = sc.AnnData(np.zeros(dfe.values.shape), dtype=np.float64)
-    adata1.X = dfe.values
-    adata1.var_names = dfe.columns.tolist()
-    adata1.obs_names = dfe.index.tolist()
-    adata1.obs = adata.obs.copy()
+    #if method=='ica':
     try:
-        top = int(top)
-        dff, acts=run_ora_task.apply_async((db,adata1,de,msigdb1),serializer="pickle").get()
+        metageneCompose, metagenes, _, _ = runICA.apply_async((dfe, dim,''),serializer="pickle").get()
     except Exception as e:
-        return HttpResponse(f"Error during ORA computation: {e}", status=500)
+        return HttpResponse("ICA Failed:" + str(e), status=500)
+    usr.metagenes = [metagenes,]
+    usr.metageneCompose = [metageneCompose,]
+    usr.imf = None
+    usr.ica_cohort = ()
+    #print(usr.getAnndata().to_df().columns)
+    #print(usr.getAnndata().obs.columns)
+    #print(usr.getIntegrationData().columns)
     if usr.save() is False:
         return HttpResponse("Can't save user record", status=500)
-    #dff, acts = pd.read_csv('usr_ora.csv'), ''
-    usr.ora = (dff,acts)
-    if usr.save() is False:
-        return HttpResponse("Can't save user record", status=500)
-    context = {'root': {"df":dff.head(top).to_dict(orient='records'), "cID": usr.cID, "group":group}}
-    return render(request, "ORAreport.html", context)
+    return HttpResponse("ICA Successful.", status=200)
 
-@auth_required
-def ORADE(request):
-    checkRes = usrCheck(request)
-    if checkRes["status"] == 0:
-        return HttpResponse(checkRes["message"], status=400)
-    else:
-        usr = checkRes["usrData"]
-    if usr.ora is None:
-        return HttpResponse("Run ORA first.", status=500)
-    thre = request.GET.get("threshold", 0.05)
-    group = request.GET.get("group", "batch2")
-    dff, acts = usr.ora
-    try:
-        source_markers = dff[dff.pvals_adj<float(thre)].groupby('group')['names'].apply(lambda x: list(x)).to_dict()
-        image_data = run_oraPlot.apply_async((acts, source_markers, group),serializer="pickle")
-    except Exception as e:
-        return HttpResponse("Internal error. "+str(e), status=500)
-    return JsonResponse({"image": image_data.get()})
 
 @auth_required
 def goML(request, mlType, mlMethod):
@@ -1033,18 +544,19 @@ def goML(request, mlType, mlMethod):
     try:
         body = json.loads(request.body)
         ml_param = body.get('ml_params', '')
-        drop = float(body.get('drop',0.65))
         label = request.GET.get("label", None)
         cla = request.GET.get("class", None)
         testRatio=request.GET.get('testRatio',None)
         logY = request.GET.get('logY',None)
-        mlType, param, X, y, testRatio, _ = run_MLpreprocess.apply_async((label, cla, testRatio, logY, usr, mlMethod, mlType, 0, ml_param, drop),serializer="pickle").get()
+        mlType, param, X, y, testRatio, _ = run_MLpreprocess.apply_async((label, cla, testRatio, logY, usr, mlMethod, mlType,  ml_param),serializer="pickle").get()
         # print(mlType)
         # print(param)
         # print(X)
+        #print(X.shape)
+        #print(X)
         # print(y)
         # print(testRatio)
-        # print(len(usr.metagenes))
+        # print(len(usr.metagenes))            
     except Exception as e:
         return HttpResponse(str(e), status=500)
     if mlType=='classification':    
@@ -1075,19 +587,22 @@ def goDML(request, mlType, mlMethod,number):
     try:
         body = json.loads(request.body)
         ml_params = body.get('ml_params', '')
-        drop = float(body.get('drop',0.65))
         label = request.GET.get("label", None)
         cla = request.GET.get("class", None)
         testRatio=request.GET.get('testRatio',None)
         logY = request.GET.get('logY',None)
-        mlType, param, X, y, testRatio, _ = run_MLpreprocess.apply_async((label, cla, testRatio, logY, usr, mlMethod, mlType, 1, ml_params, drop),serializer="pickle").get()
+        mlType, param, X, y, testRatio, _ = run_MLpreprocess.apply_async((label, cla, testRatio, logY, usr, mlMethod, mlType, ml_params),serializer="pickle").get()
         X['y'] =y
         temp = X.copy()
         adata = usr.getAnndata().copy()
+        T = body['T']['batch']
+        if T=='LABEL':
+            T = 'batch2'
         if number==1:
-            condition = adata.obs[usr.ica_cohort[0]]==usr.ica_cohort[1]
+            condition = adata.obs[T] == body['T']['batch1']
         else:
-            condition = adata.obs[usr.ica_cohort[0]]==usr.ica_cohort[2]
+            condition = adata.obs[T] == body['T']['batch2']
+        usr.ica_cohort = (T, body['T']['batch1'], body['T']['batch2'])
         valid_indices = condition[condition].index
         X = temp.loc[valid_indices].drop(columns=['y'])
         y = temp.loc[valid_indices,'y'].values
@@ -1255,7 +770,7 @@ def CFreport1(request):
         paramT = MLparamSetting(params.get('T_model', 'rf'), params.get('T_p', ''))
         paramY = MLparamSetting(params.get('Y_model', 'rf'), params.get('Y_p', ''))
         testRatio = float(params['testRatio'])
-        X, y, T = shared_ml_dml_cf(usr, int(params['use_ICAcohort']), params['Y_log'], params['Y_type'], params['Y_label'], params['Y_interest'], float(params['drop']), params['T_label'], params['T_interest'])
+        X, y, T = shared_ml_dml_cf(usr, params['Y_log'], params['Y_type'], params['Y_label'], params['Y_interest'],  params['T_label'], params['T_interest'])
         #print(X)
         #print(y)
         #print(T)
@@ -1303,7 +818,7 @@ def CFreport2(request):
         else:
             causal_forest = CausalForestDML(model_t=model_t, model_y=model_y, discrete_treatment=True, discrete_outcome=False, **cf_params)
             
-        X, y, T = shared_ml_dml_cf(usr, int(params['use_ICAcohort']), params['Y_log'], params['Y_type'], params['Y_label'], params['Y_interest'], float(params['drop']), params['T_label'], params['T_interest'])
+        X, y, T = shared_ml_dml_cf(usr, params['Y_log'], params['Y_type'], params['Y_label'], params['Y_interest'], params['T_label'], params['T_interest'])
         # print(X)
         # print(y)
         # print(T)
@@ -1357,4 +872,149 @@ def CFfeaImp(request):
         return HttpResponse("Can't save user record", status=500)
     return render(request, "shap_importance.html", {"svg_content": image,"clientID":usr.cID})
 
+@auth_required
+def dataVisual1(request):
+    #usr.metagenes = [metagenes,]
+    #usr.metageneCompose = [metageneCompose,]
+    checkRes = usrCheck(request)
+    if checkRes["status"] == 0:
+        return HttpResponse(checkRes["message"], status=400)
+    usr = checkRes["usrData"]
     
+    if len(usr.metageneCompose) == 0:
+        return HttpResponse(f"Run ICA first.", status=500)
+    
+    thre = request.GET.get("thre", None)
+    if thre is None:
+        thre = 3
+        dff = runTopFun.apply_async((usr.metageneCompose[0], thre), serializer="pickle").get()
+        
+        # Generate the correlation matrix
+        corr_matrix = usr.metagenes[0].corr(method='pearson')
+    
+        # Plot the heatmap
+        plt.figure(figsize=(10, 8))
+        sns.heatmap(corr_matrix, annot=True, fmt='.2f', cmap='coolwarm', linewidths=0.5, cbar=True)
+    
+        # Save the plot to a buffer
+        fig1 = io.BytesIO()
+        plt.savefig(fig1, format='svg')
+        fig1.seek(0)
+        plot_svg = base64.b64encode(fig1.getvalue()).decode("utf-8")
+        fig1.close()
+        
+        usr.ora = dff.reset_index()
+        
+        # Prepare the context to pass to the template
+        context = {
+            'root': {"df": dff.reset_index().to_dict(orient='records'), "cID": usr.cID},
+            'plot_svg': plot_svg
+        }
+        if usr.save() is False:
+            return HttpResponse("Can't save user record", status=500)
+        return render(request, "dv1.html", context)
+    else:
+        try:
+            thre = float(thre)
+        except ValueError:
+            return JsonResponse({"error": "Invalid 'thre' value, it must be a float."}, status=400)
+        dff = runTopFun.apply_async((usr.metageneCompose[0], thre), serializer="pickle").get()   
+        usr.ora = dff.reset_index()
+        if usr.save() is False:
+            return HttpResponse("Can't save user record", status=500)
+        return JsonResponse(dff.reset_index().to_dict(orient='records'), safe=False)
+
+from django.http import JsonResponse, HttpResponse
+from django.shortcuts import render
+import pandas as pd
+
+@auth_required
+def dataVisual2(request):
+    checkRes = usrCheck(request)
+    if checkRes["status"] == 0:
+        return HttpResponse(checkRes["message"], status=400)
+
+    usr = checkRes["usrData"]
+    if usr.ora is None:
+        return HttpResponse("Please run data Visualisation I first.", status=500)
+
+    threshold = request.GET.get('threshold', None)
+    if threshold is None:
+        return render(request, 'dv2.html', {"cID": usr.cID})
+
+    threshold = int(threshold)
+    df = usr.ora.copy()
+    df.index.name = 'meta_id'
+    df.reset_index(inplace=True)
+
+    # Convert the dataframe into a JSON-compatible format
+    df_dict = df.to_dict(orient='records')  # Convert rows to a list of dictionaries
+    df_dict_temp ={}
+    for i in df_dict:
+        df_dict_temp[i['index']]=i['inputs']
+    df_dict = df_dict_temp
+
+    unique_metagenes = sorted([i for i in usr.metageneCompose[0].columns])
+
+    # Group metagenes by their suffix
+    group_order = sorted(set(['_' + i.split('_')[-1] for i in usr.metageneCompose[0].columns]))
+    grouped_metagenes = {suffix: [] for suffix in group_order}
+
+    for metagene in unique_metagenes:
+        for suffix in group_order:
+            if metagene.endswith(suffix):
+                grouped_metagenes[suffix].append(metagene)
+                break
+                
+    num_groups = len(group_order)
+    colormap = cm.get_cmap('tab10', num_groups)  # Choose a colormap (e.g., 'tab10', 'viridis')
+    colors = [f'#{int(r*255):02X}{int(g*255):02X}{int(b*255):02X}' 
+              for r, g, b, _ in colormap(np.linspace(0, 1, num_groups))]
+
+    # Assign colors to each group
+    group_colors = {group: color for group, color in zip(group_order, colors)}
+
+    # Order metagenes
+    ordered_metagenes = []
+    for group in group_order:
+        ordered_metagenes.extend(sorted(grouped_metagenes[group]))
+
+    # Metagene to meta mapping (using df_dict directly, no iterrows)
+    metagene_to_meta = {}
+    for meta_id, genes in df_dict.items():
+        for gene in genes:
+            if gene not in metagene_to_meta:
+                metagene_to_meta[gene] = []
+            metagene_to_meta[gene].append(meta_id)
+    #print(metagene_to_meta)
+
+    # Network calculation logic
+    edges = []
+    for i in range(len(ordered_metagenes)):
+        for j in range(i + 1, len(ordered_metagenes)):
+            meta_groups_1 = set(metagene_to_meta.get(ordered_metagenes[i], []))
+            meta_groups_2 = set(metagene_to_meta.get(ordered_metagenes[j], []))
+            shared_meta_groups = meta_groups_1.intersection(meta_groups_2)
+            num_shared = len(shared_meta_groups)
+
+            if num_shared >= threshold and num_shared>=1:
+                edges.append({
+                    'source': ordered_metagenes[i],
+                    'target': ordered_metagenes[j],
+                    'shared_groups': list(shared_meta_groups),
+                    'num_shared': num_shared
+                })
+
+    # Assign the same red color to all nodes
+    node_colors = {metagene: group_colors['_' + metagene.split('_')[-1]] for metagene in ordered_metagenes}
+
+
+    # Return the JSON response with all necessary data
+    return JsonResponse({
+        'metagenes': ordered_metagenes,
+        'edges': edges,
+        'groups': group_order,
+        'group_colors': group_colors,  # Dictionary mapping groups to colors
+        'node_colors': node_colors,  # Dictionary mapping each metagene to its color
+        'meta_data': df_dict
+    })

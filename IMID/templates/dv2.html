@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Metagene Network Visualization</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding: 20px;
+        }
+        #network-plot {
+            width: 100%;
+            height: 800px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Metagene Network Visualization</h1>
+        
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label for="thresholdSlider" class="form-label">
+                    Shared Meta Groups Threshold: 
+                    <span id="thresholdValue">4</span>
+                </label>
+                <input type="range" class="form-range" 
+                       id="thresholdSlider" 
+                       min="1" max="10" 
+                       value="4" 
+                       step="1">
+            </div>
+        </div>
+
+        <div id="network-plot"></div>
+    </div>
+
+    <script>
+    $(document).ready(function() {
+        function updateNetwork(threshold) {
+            $.ajax({
+                url: '/dataVisual2/metagenes/?threshold='+threshold+'&cID={{ cID }}',
+                success: function(data) {
+                    const groups = data.groups;
+                    const metagenes = data.metagenes;
+                    const edges = data.edges;
+
+                    // Node positions (circular layout)
+                    const circleRadius = 1.0;
+                    const groupSpacing = 0.2;
+                    const totalAvailableAngle = 2 * Math.PI - groups.length * groupSpacing;
+
+                    const groupSizes = groups.reduce((acc, group) => {
+                        acc[group] = metagenes.filter(m => m.endsWith(group)).length;
+                        return acc;
+                    }, {});
+
+                    const totalNodes = Object.values(groupSizes).reduce((a, b) => a + b, 0);
+
+                    const nodeData = metagenes.map((metagene, idx) => {
+                        const group = groups.find(g => metagene.endsWith(g));
+                        const groupMembers = metagenes.filter(m => m.endsWith(group));
+                        const position = groupMembers.indexOf(metagene);
+                        const totalInGroup = groupMembers.length;
+
+                        let startAngle = 0;
+                        let endAngle = 0;
+                        let accumulatedAngle = 0;
+                        for (let g of groups) {
+                            const groupFraction = groupSizes[g] / totalNodes;
+                            const groupAngleSize = totalAvailableAngle * groupFraction;
+                            
+                            if (group === g) {
+                                startAngle = accumulatedAngle;
+                                endAngle = accumulatedAngle + groupAngleSize;
+                                break;
+                            }
+                            
+                            accumulatedAngle += groupAngleSize + groupSpacing;
+                        }
+
+                        const angle = totalInGroup > 1 
+                            ? startAngle + (endAngle - startAngle) * (position / (totalInGroup - 1))
+                            : (startAngle + endAngle) / 2;
+
+                        return {
+                            x: circleRadius * Math.cos(angle),
+                            y: circleRadius * Math.sin(angle),
+                            name: metagene,
+                            group: group
+                        };
+                    });
+
+                    const nodeTraces = [{
+                        x: nodeData.map(n => n.x),
+                        y: nodeData.map(n => n.y),
+                        mode: 'markers',
+                        type: 'scatter',
+                        marker: {
+                            size: 10,
+                            color: nodeData.map(n => data.node_colors[n.name]), // Use node_colors from response
+                            line: {
+                                width: 0.5,
+                                color: 'rgba(0,0,0,0.5)'
+                            }
+                        },
+                        hoverinfo: 'none'
+                    }];
+
+                    const edgeTraces = edges.map(edge => {
+                        const sourceNode = nodeData.find(n => n.name === edge.source);
+                        const targetNode = nodeData.find(n => n.name === edge.target);
+
+                        const controlScale = 0.5;
+                        const controlX = (sourceNode.x + targetNode.x) / 2;
+                        const controlY = (sourceNode.y + targetNode.y) / 2;
+
+                        // Adjust control points for more curve
+                        const adjustedControlX = controlX * controlScale;
+                        const adjustedControlY = controlY * controlScale;
+
+                        const t = Array.from({length: 50}, (_, i) => i / 49);
+                        const bezierX = t.map(ti => (1 - ti) * (1 - ti) * sourceNode.x + 2 * (1 - ti) * ti * adjustedControlX + ti * ti * targetNode.x);
+                        const bezierY = t.map(ti => (1 - ti) * (1 - ti) * sourceNode.y + 2 * (1 - ti) * ti * adjustedControlY + ti * ti * targetNode.y);
+
+                        const sharedMetaGroupsText = edge.shared_groups.join(', ');
+
+                        return {
+                            x: bezierX,
+                            y: bezierY,
+                            mode: 'lines',
+                            line: {
+                                width: edge.num_shared,
+                                color: 'rgba(100,100,100,0.5)',
+                                shape: 'spline'
+                            },
+                            hoverinfo: 'text',
+                            text: `${edge.source}  ${edge.target}<br>Shared Meta Groups: ${edge.num_shared}<br>${sharedMetaGroupsText}`
+                        };
+                    });
+                    
+                    const annotations = nodeData.map(n => {
+                        // Calculate angle from center to node (in radians)
+                        const angle = Math.atan2(n.y, n.x);
+                        // Convert to degrees for textangle
+                        let angleDegrees = -angle * 180 / Math.PI;
+                        
+                        // Position label at optimal distance (1.25x node radius)
+                        const labelDistance = 1.25;
+                        const labelX = n.x * labelDistance;
+                        const labelY = n.y * labelDistance;
+                        
+                        // Determine text alignment and flipping
+                        let text = n.name;
+                        
+                        // Flip text in bottom half of circle for readability
+                        if (angle > Math.PI/2 || angle < -Math.PI/2) {
+                            angleDegrees += 180;
+                            text = ' ' + text + '  '; // Add spaces for bottom labels
+                        } else {
+                            text = '  ' + text + ' '; // Add spaces for top labels
+                        }
+                    
+                        return {
+                            x: labelX,
+                            y: labelY,
+                            text: text,
+                            showarrow: false,
+                            font: {
+                                size: 10,
+                                color: data.node_colors[n.name] // Use same color as node
+                            },
+                            textangle: angleDegrees,
+                            xanchor: 'center',
+                            yanchor: 'middle',
+                            standoff: 8,
+                            borderpad: 0,
+                            bgcolor: 'rgba(255,255,255,0.8)',
+                            bordercolor: 'rgba(0,0,0,0)'
+                        };
+                    });
+                
+                
+                const layout = {
+                    title: 'Metagene Network Diagram',
+                    showlegend: false,
+                    hovermode: 'closest',
+                    width: 900,
+                    height: 900,
+                    margin: {l: 20, r: 20, b: 20, t: 40},
+                    xaxis: {range: [-1.8, 1.8], zeroline: false, showticklabels: false},
+                    yaxis: {range: [-1.8, 1.8], zeroline: false, showticklabels: false},
+                    annotations: annotations,
+                    plot_bgcolor: 'white',
+                    paper_bgcolor: 'white'
+                };
+
+                    Plotly.newPlot('network-plot', [...edgeTraces, ...nodeTraces], layout);
+                }
+            });
+        }
+
+        // Initial load
+        updateNetwork(0);
+
+        // Update on slider change
+        $('#thresholdSlider').on('input', function() {
+            const threshold = $(this).val();
+            $('#thresholdValue').text(threshold);
+            updateNetwork(threshold);
+        });
+    });
+    </script>
+</body>
+</html>

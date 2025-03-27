@@ -430,43 +430,6 @@ def usrCheck(request, flag=1):
     return {"status": 1, "usrData": usr}
 
 
-# normalize transcriptomic data
-def normalize(df, count_threshold=2000):
-    df = df[[col for col in df.columns if not (col.startswith("LOC") and len(col) > 8)]]
-    is_rnaseq = df.applymap(lambda x: float(x).is_integer()).mean().mean() > 0.9
-    #if is_rnaseq:
-    #    df_filtered = df.loc[:, df.sum(axis=0) >= count_threshold]
-    #else:
-    df_filtered = df.copy()
-
-    df_filtered = df_filtered.astype(np.float64)
-    adata = sc.AnnData(df_filtered, dtype=np.float64)
-    adata.obs.index = [i for i in df_filtered.index]
-
-    if is_rnaseq:
-        adata.var["mt"] = adata.var_names.str.startswith("MT-")
-        sc.pp.calculate_qc_metrics(adata, qc_vars=["mt"], inplace=True)
-        # Filter cells with >5% mitochondrial genes
-        # adata = adata[adata.obs.pct_counts_mt < 5, :]
-
-        # sc.pp.normalize_total(adata, target_sum=1e6)
-        # adata.X = calculate_deseq2_normalization(adata.to_df()) # the result is the same with running CPM()
-        adata.X = CPM().fit_transform(adata.to_df())
-
-    # counts = adata.to_df()
-    # metadata = pd.DataFrame(
-    #    {"condition": ["sc1"] * counts.shape[0]}, index=counts.index
-    # )
-    # metadata["condition"][0] = "sc2"
-    # dds = DeseqDataSet(
-    #    counts=counts,
-    #    metadata=metadata,
-    #    design_factors="condition",
-    #    inference=inference,
-    # )
-    # dds.deseq2()
-    # rdf = dds.to_df()
-    return adata
 
 
 # normalize clinic data
@@ -474,57 +437,23 @@ def normalize1(df, log2="No"):
     # Identify numeric columns
     return df
 
-def loadSharedData(request, integrate, cID):
+def loadSharedData(request, cID):
     files = UploadedFile.objects.filter(user=request.user, type1="exp", cID=cID).all()
     if files:
         files = [i.file.path for i in files]
-    else:
-        files = []
-    files_meta = []
-    in_ta, in_ta1 = {}, {}
-    if request.user.groups.exists():
-        for i in SharedFile.objects.filter(
-            type1="expression", groups__in=request.user.groups.all()
-        ).all():
-            in_ta[i.cohort] = i.file.path
-        for i in SharedFile.objects.filter(
-            type1="meta", groups__in=request.user.groups.all()
-        ).all():
-            in_ta1[i.cohort] = i.file.path
-    else:
-        for i in SharedFile.objects.filter(type1="expression").all():
-            in_ta[i.cohort] = i.file.path
-        for i in SharedFile.objects.filter(type1="meta").all():
-            in_ta1[i.cohort] = i.file.path
+    return files
 
-    for i in integrate:
-        if i in in_ta:
-            files.append(in_ta[i])
-            files_meta.append(in_ta1[i])
-    return files, files_meta
-
-
-def integrateCliData(request, integrate, cID, files_meta):
+def integrateCliData(request, cID):
     f = UploadedFile.objects.filter(user=request.user, type1="cli", cID=cID).first()
     if f is not None:
         temp0 = pd.read_csv(f.file.path)
         temp0 = temp0.dropna(axis=1)
     else:
         temp0 = pd.DataFrame()
-    if integrate[0] != "null" or integrate != [""]:  # jquery plugin compatible
-        for i in files_meta:
-            if temp0.shape == (0, 0):
-                temp0 = pd.read_csv(i).dropna(axis=1, inplace=False)
-            else:
-                temp0 = pd.concat(
-                    [temp0, pd.read_csv(i).dropna(axis=1, inplace=False)],
-                    axis=0,
-                    join="inner",
-                )
     return temp0
 
 
-def integrateExData(files, temp0, log2, corrected):
+def integrateExData(files, temp0):
     dfs = []
     batch = []
     obs = []
@@ -540,36 +469,17 @@ def integrateExData(files, temp0, log2, corrected):
         # exclude NA
         temp1.dropna(axis=1, inplace=True)
         if temp1.shape[0] != 0:
-            temp1 = normalize(temp1)
             dfs.append(temp1)
             # color2.extend(list(temp.LABEL))
             batch.extend(
                 ["_".join(file.split("_")[1:]).split(".csv")[0]]
-                * temp1.to_df().shape[0]
+                * temp1.shape[0]
             )
             # obs.extend(temp.ID_REF.tolist())
-            obs.extend(temp1.to_df().index.tolist())
-    if log2 == "Yes":
-        dfs = [np.log1p(i.to_df()) for i in dfs]
-    else:
-        dfs_centered = [center_df(df) for df in dfs]
-        dfs1 = pd.concat(dfs_centered, axis=0, join='inner')
+            obs.extend(temp1.index.tolist())
+    
 
-    dfs1 = None
-    if len(dfs) > 1:
-        if corrected == "Combat":
-            dfs1 = combat([i.T for i in dfs])
-        elif corrected == "Harmony":
-            dfs1 = harmony(dfs, batch, obs)
-        elif corrected == "BBKNN":
-            dfs1 = bbknn(dfs)
-        else:
-            dfs1 = pd.concat(dfs,axis=0, join='inner')
-    elif len(dfs) == 0:
-        return None
-    else:
-        dfs1 = dfs[0]
-
+    dfs1 = dfs[0]
     dfs1["ID_REF"] = obs
     dfs1["FileName"] = batch
     return dfs1
@@ -635,7 +545,7 @@ def ICA(df11, df12=None, num=7, suffix=''):
     metageneCompose = pd.DataFrame(
         sICA.S_,
         columns=ta11.columns.values,
-        index=["metagene_" + str(i) + '_' + suffix for i in range(sICA.S_.shape[0])],
+        index=["metapathway_" + str(i) for i in range(sICA.S_.shape[0])],
     )
     metagenes = sICA.transform(ta11)
     metagenes = pd.DataFrame(
@@ -739,7 +649,7 @@ def MLparamSetting(mlMethod, ml_params):
 
     return params
 
-def shared_ml_dml_cf(usr, dml, logY, mlType, label, cla, drop=0.65, Tlabel='', Tclass=''):
+def shared_ml_dml_cf(usr, logY, mlType, label, cla, Tlabel='', Tclass=''):
     adata = usr.getAnndata()  
     temp = adata.to_df()
     dfe, dfc = expression_clinic_split(adata)
@@ -748,36 +658,18 @@ def shared_ml_dml_cf(usr, dml, logY, mlType, label, cla, drop=0.65, Tlabel='', T
     if Tlabel=='LABEL':
         Tlabel='batch2'
     
-    if dml==0:
-        if len(usr.metagenes)==0:
-            raise Exception("Run ICA/PCA first.")
-        if len(usr.metagenes)==1:
-            X = usr.metagenes[0]
-            if Tlabel=='':
-                T = None
-            else:
-                T = adata.obs.loc[X.index, Tlabel].to_list()
-                T = [1 if value == Tclass else 0 for value in T]
+    if len(usr.metagenes)==0:
+        raise Exception("Run ICA first.")
+    X = usr.metagenes[0]
+    if Tlabel=='':
+        T = None
     else:
-        if len(usr.metagenes)==0 or len(usr.metageneCompose)==0 or len(usr.metagenes)==1:
-            raise Exception("Run ICA with cohort first.")
+        T = adata.obs.loc[X.index, Tlabel].to_list()
+        T = [1 if value == Tclass else 0 for value in T]
 
-    if len(usr.metagenes)!=1:
-        X11, X12, X21, X22 =usr.metagenes[0], usr.metagenes[1], usr.metagenes[2], usr.metagenes[3]
-        temp1=pd.concat([X11,X22],axis=1)#0
-        temp2=pd.concat([X12,X21],axis=1)#1
-        temp3=pd.concat([temp1,temp2],axis=0)
-        X = drop_parallel(temp3, drop)
-        if Tlabel!='':
-            T = adata.obs.loc[X.index, Tlabel].to_list()
-            T = [1 if value == Tclass else 0 for value in T]
-        else:
-            T = None
     if logY=='yes' and mlType!='classification':
         dfc = dfc.drop(columns=[label])
     X = pd.concat([X, dfc],axis=1, join='inner')
-    if usr.imf is not None:
-        X = pd.concat([X, usr.imf],axis=1, join='inner')
  
     if mlType=='classification':
         if cla is None or label not in adata.obs_keys():

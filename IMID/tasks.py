@@ -9,7 +9,6 @@ import base64
 import io
 import numpy as np
 import scipy.stats as stats
-from jupyter_client import KernelManager
 
 from celery import shared_task
 import pandas as pd
@@ -56,25 +55,24 @@ def cleanup_inactive_users():
 
 
 @shared_task(time_limit=180, soft_time_limit=150)
-def runIntegrate(request, integrate, cID, log2, corrected, usr, fr):
-    files, files_meta = loadSharedData(request, integrate, cID)
-    temp0 = integrateCliData(request, integrate, cID, files_meta)
+def runIntegrate(request, cID, usr):
+    files = loadSharedData(request, cID)
+    temp0 = integrateCliData(request, cID)
+
     if temp0.shape == (0, 0):
         raise Exception("Can't find meta file")
     if len(files) == 0:
         raise Exception("Can't find expression file")
-    dfs1 = integrateExData(files, temp0, log2, corrected)
+    dfs1 = integrateExData(files, temp0)
     if dfs1 is None:
         raise Exception("No matched data for meta and omics")
     # combine Ex and clinic data
     temp = dfs1.set_index("ID_REF").join(
-        normalize1(temp0, log2).set_index("ID_REF"), how="inner"
+        temp0.set_index("ID_REF"), how="inner"
     )
     temp["obs"] = temp.index.tolist()
     # temp.dropna(axis=1, inplace=True)
     usr.setIntegrationData(temp)
-    X2D = runFeRed.apply(args=[fr, usr]).result
-    usr.setFRData(X2D)
     usr.metagenes = pd.DataFrame()
     usr.metageneCompose = pd.DataFrame()
     if usr.save() is False:
@@ -107,7 +105,6 @@ def runIntegrate(request, integrate, cID, log2, corrected, usr, fr):
     except Exception as e:
         raise Exception(f"Error for registering to DataBase. {str(e)}")
     return
-
 
 @shared_task(time_limit=180, soft_time_limit=150)
 def runDgea(clusters, adata, targetLabel, n_genes):
@@ -264,6 +261,9 @@ def runICA(df, num, suffix='', flag1=None, flag2=None):
     columns_to_drop = ["FileName", "obs", "LABEL"]
     df.drop(columns=[col for col in columns_to_drop if col in df.columns], inplace=True)
     df1 = df.loc[:, ~df.columns.str.startswith("c_")]
+    # cell_type is compulsory
+    if 'cell_type' in df1.columns:
+        df1 = pd.get_dummies(df1, columns=['cell_type'], drop_first=False)
 
     try:
         if flag1 is None:
@@ -290,30 +290,16 @@ def runPCA(df, num):
 
 
 @shared_task(time_limit=180, soft_time_limit=150)
-def runTopFun(metageneCompose, name):
+def runTopFun(metageneCompose, thre=3):
     Tannot = toppfun.ToppFunAnalysis(
         data=metageneCompose,
-        threshold=3,
+        threshold=thre,
         method="std",
         tail="heaviest",
         convert_ids=True,
     )
-    df = Tannot.get_analysis(metagene=name)
-    filtered_df = df[df["Category"] == "Pathway"]
-    jd = {
-        "data": [
-            {
-                "Category": row["Category"],
-                "ID": row["ID"],
-                "Name": row["Name"],
-                "PValue": f"{row['PValue']:.2e}",
-                "Gene_Symbol": row["Gene_Symbol"],
-            }
-            for _, row in filtered_df.iterrows()
-        ]
-    }
-    return jd
     
+    return Tannot.top_genes_[['inputs']]
 
 @shared_task(time_limit=180, soft_time_limit=150)
 def calculate_imf_scores(expression_data):
@@ -507,7 +493,7 @@ def run_GB(typeRf, param, X, X_train, y_train, X_test, y_test, testRatio):
 @shared_task(time_limit=60*4, soft_time_limit=230)
 def run_shap(model, X, flip='no'):
     explainer = shap.TreeExplainer(model, X)
-    shap_values = explainer(X)
+    shap_values = explainer(X, check_additivity=False)
     if len(shap_values.shape)!=2:
         shap_values = shap_values[:,:,1]
     feature_order = None
@@ -526,14 +512,14 @@ def run_shap(model, X, flip='no'):
     return image_data, shap_values
 
 @shared_task(time_limit=80, soft_time_limit=70)    
-def run_MLpreprocess(label, cla, testRatio, logY, usr, mlMethod, mlType, dml, ml_params='', drop=0.65):
+def run_MLpreprocess(label, cla, testRatio, logY, usr, mlMethod, mlType,  ml_params=''):
     if label=='LABEL':
         label='batch2'
     testRatio = 0.1 if testRatio == '1' else 0.2
     param = MLparamSetting(mlMethod, ml_params)
     if label is None:
         raise Exception("incorrect message request")
-    X, y, T = shared_ml_dml_cf(usr, dml, logY, mlType, label, cla, drop)
+    X, y, T = shared_ml_dml_cf(usr, logY, mlType, label, cla)
     return mlType, param, X, y, testRatio, T
     
 @shared_task(time_limit=600, soft_time_limit=580)
@@ -541,6 +527,8 @@ def run_DMLreport(model1, X1, model2, X2):
     def compute_shap_importance(model, X):
         explainer = shap.TreeExplainer(model, X)
         shap_values = explainer(X)
+        if len(shap_values.shape)!=2:
+            shap_values = shap_values[:,:,1]
         shap_df = pd.DataFrame(shap_values.values, columns=X.columns)
         return shap_values, shap_df.abs().mean(axis=0)
         
