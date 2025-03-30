@@ -46,7 +46,7 @@ from .utils import (
     expression_clinic_split,
     map_normalized_keys,
     MLparamSetting,
-    shared_ml_dml_cf
+    shared_ml_dml_cf,
 )
 
 from .models import MetaFileColumn, UploadedFile, SharedFile, Msigdb
@@ -72,7 +72,8 @@ from IMID.tasks import (
     run_DMLreportDis,
     run_CFreport1,
     run_CFreport2,
-    run_GB
+    run_GB,
+    run_matrixplot
 )
 
 from econml.dml import CausalForestDML
@@ -271,7 +272,7 @@ def meta_columns(request):
                 [i[0], i[1], i[2]]
                 for i in MetaFileColumn.objects.filter(user=request.user, cID=usr.cID)
                 .all()
-                .values_list("colName", "label", "numeric")
+                .values_list("colName", "label", "numeric") if i[0]!='cell_type'
             ]
             if param=="2":
                 created =[i[0].split('__crted')[0] for i in result if 'crted' in i[0]]
@@ -280,7 +281,7 @@ def meta_columns(request):
             result = [
                 [i[0], i[1], i[2]]
                 for i in MetaFileColumn.objects.filter(user=request.user, cID=usr.cID, numeric="0")
-                .all().values_list("colName", "label", "numeric")
+                .all().values_list("colName", "label", "numeric") if i[0]!='cell_type'
             ]
             if param =="2":
                 created =[i[0].split('__crted')[0] for i in result if 'crted' in i[0]]
@@ -924,9 +925,6 @@ def dataVisual1(request):
             return HttpResponse("Can't save user record", status=500)
         return JsonResponse(dff.reset_index().to_dict(orient='records'), safe=False)
 
-from django.http import JsonResponse, HttpResponse
-from django.shortcuts import render
-import pandas as pd
 
 @auth_required
 def dataVisual2(request):
@@ -1018,3 +1016,16 @@ def dataVisual2(request):
         'node_colors': node_colors,  # Dictionary mapping each metagene to its color
         'meta_data': df_dict
     })
+    
+    
+@auth_required
+def matrixplot(request):
+    checkRes = usrCheck(request)
+    if checkRes["status"] == 0:
+        return HttpResponse(checkRes["message"], status=400)
+
+    usr = checkRes["usrData"]
+    by = request.GET.get("by", 'batch2')
+    temp = usr.metagenes[0].copy()
+    image_base64 = run_matrixplot.apply_async((temp, usr, by), serializer="pickle").get()
+    return JsonResponse({"image": image_base64})

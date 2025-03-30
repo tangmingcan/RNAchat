@@ -669,11 +669,15 @@ def shared_ml_dml_cf(usr, logY, mlType, label, cla, Tlabel='', Tclass=''):
 
     if logY=='yes' and mlType!='classification':
         dfc = dfc.drop(columns=[label])
+    if 'cell_type' in dfc.columns:
+        dfc = dfc.drop(columns=['cell_type'])
     X = pd.concat([X, dfc],axis=1, join='inner')
  
     if mlType=='classification':
         if cla is None or label not in adata.obs_keys():
             raise Exception("incorrect message request")
+        if cla =='cell_type':
+            raise Exception("cell types can't be used for classification")
         dics = map_normalized_keys([cla], set(adata.obs[label].to_list()))
         target_value = dics.get(cla)
         if target_value is None:

@@ -49,6 +49,18 @@
       <!-- Initially render the plot as an <img> tag -->
       <img src="data:image/svg+xml;base64,{{ plot_svg }}" alt="Heatmap">
   </div>
+  <br><br>
+  <div id='oraPlot1'>
+     <label>matrixplot:</label><br><br> 
+     <select id='matrixplot_select'>
+        <option value='meta' selected='selected'>By metapathways</option>
+        <option value='batch2'>By batch</option>
+     </select>
+     <button class="btn btn-primary" onclick="showmatrix();">Show plot</button>
+      <!-- Initially render the plot as an <img> tag -->
+      <br>
+      <img id='matrix_img'>
+  </div>
 
 </div>
 
@@ -106,6 +118,33 @@ function RerunMember() {
                 ]);
             });
             table.draw();  // Redraw the table with updated data
+        },
+        error: function(response) {
+            alert("Error: " + response.responseText);
+        }
+    });
+}
+function showmatrix()
+{
+    by =$('#matrixplot_select').val();
+    url1 ='matrixplot/?by='+by+'&cID={{ root.cID }}';
+    $.ajax({
+        url: url1,
+        dataType: 'json',
+        cache: false,
+        contentType: 'application/json',
+        processData: false,
+        type: 'get',
+        async: true,
+        beforeSend: function() {
+            $('#loader').show();  // Show the loader before the request
+        },
+        complete: function() {
+            $('#loader').hide();  // Hide the loader after the request is complete
+        },
+        success: function(response) {
+            // Update the image with the new plot
+            $('#matrix_img').attr('src', 'data:image/svg+xml;base64,' + response.image);
         },
         error: function(response) {
             alert("Error: " + response.responseText);

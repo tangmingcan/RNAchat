@@ -31,5 +31,6 @@ urlpatterns = [
     path("cf/report/causalForests/", views.CFreport2, name="CFreport2"),
     path("cf/featureImportance/", views.CFfeaImp, name="CFfeaImp"),
     path("dataVisual1/", views.dataVisual1, name="dataVisual1"),
+    path("dataVisual1/matrixplot/", views.matrixplot, name="matrixplot"),
     path("dataVisual2/metagenes/", views.dataVisual2, name="dataVisual2")
 ]

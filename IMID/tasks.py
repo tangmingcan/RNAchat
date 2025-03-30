@@ -663,3 +663,30 @@ def run_CFreport2(causal_forest, X_test):
     plt.savefig(figure, format="svg", bbox_inches="tight")
     plt.close()
     return base64.b64encode(figure.getvalue()).decode("utf-8")
+    
+@shared_task(time_limit=10, soft_time_limit=8)
+def run_matrixplot(temp, usr, by):
+    # Create AnnData object
+    adata = sc.AnnData(temp, dtype=np.float32)
+    adata.obs['bulk_labels'] = usr.getAnndata().obs['batch2']
+    
+    markers = temp.columns.tolist()
+
+    # Limit CPU usage
+    with threadpool_limits(limits=NUMBER_CPU_LIMITS, user_api="blas"):
+        # Create plot
+        fig, ax = plt.subplots()
+        if by == 'batch2':
+            sc.pl.matrixplot(adata, markers, groupby='bulk_labels', standard_scale='group', dendrogram=True, ax=ax)
+        else:
+            sc.pl.matrixplot(adata, markers, groupby='bulk_labels', standard_scale='var', dendrogram=True, ax=ax)
+
+        # Save to buffer
+        figure1 = io.BytesIO()
+        plt.savefig(figure1, format="svg", bbox_inches="tight")
+        plt.close(fig)
+        
+        # Encode as base64
+        figure1.seek(0)
+        image_data = base64.b64encode(figure1.getvalue()).decode("utf-8")
+    return image_data
