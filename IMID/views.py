@@ -20,6 +20,8 @@ from django.db.models import Q
 from collections import defaultdict
 from django.contrib.auth import authenticate
 import seaborn as sns
+from pyecharts import options as opts
+from pyecharts.charts import Graph
 
 # gene_result.txt, genes_ncbi_proteincoding.py, go-basic.obo
 
@@ -925,8 +927,6 @@ def dataVisual1(request):
             return HttpResponse("Can't save user record", status=500)
         return JsonResponse(dff.reset_index().to_dict(orient='records'), safe=False)
 
-from pyecharts import options as opts
-from pyecharts.charts import Graph
 @auth_required
 def dataVisual2(request):
     checkRes = usrCheck(request)
