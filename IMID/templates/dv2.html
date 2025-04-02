@@ -1,12 +1,18 @@
 {% extends 'base.html' %}
 {% block body %}
     <title>Metagene Network Visualization</title>
+    <script src='https://assets.pyecharts.org/assets/v5/echarts.min.js'></script>
     <style>
+        body {
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        
         .container {
-            width: 1800px; /* Adjust width here */
-            margin: 0 auto;
             background-color: white;
             padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
         
         h1 {
@@ -49,6 +55,8 @@
             font-size: 20px;
         }
     </style>
+</head>
+<body>
     <div class="container">
         <h1>Metagene Network Visualization</h1>
         
@@ -74,6 +82,7 @@
     <script>
     $(document).ready(function() {
         // Initial loading state
+        //echarts.init();
         $('#network-container').html('<div class="loading">Loading visualization...</div>');
         
         function updateNetwork(threshold) {
@@ -87,7 +96,7 @@
             $.ajax({
                 url: `/dataVisual2/metagenes/?threshold=${threshold}&cID=${cID}`,
                 success: function(data) {
-                    $('#network-container').html(data.graph_html);
+                    $('#network-container').html(''+data.graph_html);
                 },
                 error: function(xhr, status, error) {
                     $('#network-container').html(`
@@ -102,7 +111,9 @@
         }
         
         // Load initial network
-        updateNetwork(4);
+        //updateNetwork(10);
+        //temp = echarts.init();
+        //$('#network-container').html(temp);
         
         // Update on slider change
         let debounceTimer;

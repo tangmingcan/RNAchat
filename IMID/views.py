@@ -974,7 +974,7 @@ def dataVisual2(request):
                 metagene_to_meta[gene] = []
             metagene_to_meta[gene].append(meta_id)
     
-    # Create edges
+    # Create edges and include shared meta groups information
     edges = []
     for i in range(len(unique_metagenes)):
         for j in range(i + 1, len(unique_metagenes)):
@@ -987,9 +987,9 @@ def dataVisual2(request):
                 edges.append({
                     'source': unique_metagenes[i],
                     'target': unique_metagenes[j],
-                    'num_shared': num_shared
+                    'num_shared': num_shared,
+                    'shared_meta_groups': shared_meta_groups  # Add shared_meta_groups information
                 })
-    
     # Create nodes and links with widths proportional to num_shared
     nodes = [{"name": m, "symbolSize": 10, "category": group_order.index('_' + m.split('_')[-1])} for m in unique_metagenes]
     links = [
@@ -1001,6 +1001,9 @@ def dataVisual2(request):
                 "width": e['num_shared'] * 2,  # Multiply by 2 to make width more visible
                 "opacity": 0.7,
                 "curveness": 0.3
+            },
+            "tooltip": {
+                "formatter": f"Shared Meta Groups: {', '.join(e['shared_meta_groups'])} <br> Number of Shared: {e['num_shared']}"  # Display shared_meta_groups and num_shared
             }
         } for e in edges
     ]
@@ -1023,13 +1026,14 @@ def dataVisual2(request):
             title_opts=opts.TitleOpts(title="Metagene Network"),
             legend_opts=opts.LegendOpts(orient="vertical", pos_left="2%", pos_top="20%"),
             tooltip_opts=opts.TooltipOpts(
-                formatter="{b}: {c}"
+                formatter="{b}: {c}"  # The default tooltip formatter
             ),
         )
     )
     
     # Return the rendered graph HTML
     return JsonResponse({"graph_html": graph.render_embed()})
+
     
     
 @auth_required
