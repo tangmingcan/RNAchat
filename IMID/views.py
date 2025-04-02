@@ -926,7 +926,6 @@ def dataVisual1(request):
         if usr.save() is False:
             return HttpResponse("Can't save user record", status=500)
         return JsonResponse(dff.reset_index().to_dict(orient='records'), safe=False)
-
 @auth_required
 def dataVisual2(request):
     checkRes = usrCheck(request)
@@ -935,7 +934,7 @@ def dataVisual2(request):
     
     usr = checkRes["usrData"]
     if usr.ora is None:
-        return HttpResponse("Please run data Visualisation I first.", status=500)
+        return HttpResponse("Please run data Visualization I first.", status=500)
     
     threshold = request.GET.get('threshold', None)
     cID = request.GET.get('cID', None)
@@ -944,7 +943,6 @@ def dataVisual2(request):
     if threshold is None:
         return render(request, 'dv2.html', {"cID": usr.cID})
     
-    # Process with the threshold
     threshold = int(threshold)
     
     # Copy and prepare data
@@ -955,7 +953,6 @@ def dataVisual2(request):
     df_dict_temp = {i['index']: i['inputs'] for i in df_dict}
     df_dict = df_dict_temp
     
-    # Get unique metagenes and group them
     unique_metagenes = sorted([i for i in usr.metageneCompose[0].columns])
     group_order = sorted(set(['_' + i.split('_')[-1] for i in usr.metageneCompose[0].columns]))
     
@@ -974,8 +971,10 @@ def dataVisual2(request):
                 metagene_to_meta[gene] = []
             metagene_to_meta[gene].append(meta_id)
     
-    # Create edges and include shared meta groups information
+    # Compute edges and node degrees
     edges = []
+    node_degrees = {m: 0 for m in unique_metagenes}
+    
     for i in range(len(unique_metagenes)):
         for j in range(i + 1, len(unique_metagenes)):
             meta_groups_1 = set(metagene_to_meta.get(unique_metagenes[i], []))
@@ -988,17 +987,38 @@ def dataVisual2(request):
                     'source': unique_metagenes[i],
                     'target': unique_metagenes[j],
                     'num_shared': num_shared,
-                    'shared_meta_groups': shared_meta_groups  # Add shared_meta_groups information
+                    'shared_meta_groups': list(shared_meta_groups)
                 })
-    # Create nodes and links with widths proportional to num_shared
-    nodes = [{"name": m, "symbolSize": 10, "category": group_order.index('_' + m.split('_')[-1])} for m in unique_metagenes]
+                # Increase node degree count
+                node_degrees[unique_metagenes[i]] += 1
+                node_degrees[unique_metagenes[j]] += 1
+    
+    # Define scaling factor for node size
+    min_size = 10
+    max_size = 50
+    max_degree = max(node_degrees.values()) if node_degrees else 1  # Avoid division by zero
+    scale_factor = (max_size - min_size) / max_degree
+    
+    # Create nodes with dynamic size based on connections (degree)
+    nodes = [
+        {
+            "name": m,
+            "symbolSize": min_size + node_degrees[m] * scale_factor,  # Scale node size
+            "category": group_order.index('_' + m.split('_')[-1]),
+            "tooltip": {
+                "formatter": f"Metagene: {m} <br> Connections: {node_degrees[m]}"  # Show node connections
+            }
+        } for m in unique_metagenes
+    ]
+    
+    # Define links with dynamic width
     links = [
         {
             "source": e['source'], 
             "target": e['target'], 
             "value": e['num_shared'],
             "lineStyle": {
-                "width": e['num_shared'] * 2,  # Multiply by 2 to make width more visible
+                "width": e['num_shared'] * 2,  # Width proportional to shared connections
                 "opacity": 0.7,
                 "curveness": 0.3
             },
@@ -1007,6 +1027,7 @@ def dataVisual2(request):
             }
         } for e in edges
     ]
+    
     categories = [{"name": g} for g in group_order]
     
     # Create graph with pyecharts
@@ -1025,14 +1046,12 @@ def dataVisual2(request):
         .set_global_opts(
             title_opts=opts.TitleOpts(title="Metagene Network"),
             legend_opts=opts.LegendOpts(orient="vertical", pos_left="2%", pos_top="20%"),
-            tooltip_opts=opts.TooltipOpts(
-                formatter="{b}: {c}"  # The default tooltip formatter
-            ),
+            tooltip_opts=opts.TooltipOpts(formatter="{b}: {c}"),
         )
     )
     
-    # Return the rendered graph HTML
     return JsonResponse({"graph_html": graph.render_embed()})
+
 
     
     
