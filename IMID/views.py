@@ -925,97 +925,111 @@ def dataVisual1(request):
             return HttpResponse("Can't save user record", status=500)
         return JsonResponse(dff.reset_index().to_dict(orient='records'), safe=False)
 
-
+from pyecharts import options as opts
+from pyecharts.charts import Graph
 @auth_required
 def dataVisual2(request):
     checkRes = usrCheck(request)
     if checkRes["status"] == 0:
         return HttpResponse(checkRes["message"], status=400)
-
+    
     usr = checkRes["usrData"]
     if usr.ora is None:
         return HttpResponse("Please run data Visualisation I first.", status=500)
-
+    
     threshold = request.GET.get('threshold', None)
+    cID = request.GET.get('cID', None)
+    
+    # If no threshold provided, render the HTML template
     if threshold is None:
         return render(request, 'dv2.html', {"cID": usr.cID})
-
+    
+    # Process with the threshold
     threshold = int(threshold)
+    
+    # Copy and prepare data
     df = usr.ora.copy()
     df.index.name = 'meta_id'
     df.reset_index(inplace=True)
-
-    # Convert the dataframe into a JSON-compatible format
-    df_dict = df.to_dict(orient='records')  # Convert rows to a list of dictionaries
-    df_dict_temp ={}
-    for i in df_dict:
-        df_dict_temp[i['index']]=i['inputs']
+    df_dict = df.to_dict(orient='records')
+    df_dict_temp = {i['index']: i['inputs'] for i in df_dict}
     df_dict = df_dict_temp
-
+    
+    # Get unique metagenes and group them
     unique_metagenes = sorted([i for i in usr.metageneCompose[0].columns])
-
-    # Group metagenes by their suffix
     group_order = sorted(set(['_' + i.split('_')[-1] for i in usr.metageneCompose[0].columns]))
+    
     grouped_metagenes = {suffix: [] for suffix in group_order}
-
     for metagene in unique_metagenes:
         for suffix in group_order:
             if metagene.endswith(suffix):
                 grouped_metagenes[suffix].append(metagene)
                 break
-                
-    num_groups = len(group_order)
-    colormap = cm.get_cmap('tab10', num_groups)  # Choose a colormap (e.g., 'tab10', 'viridis')
-    colors = [f'#{int(r*255):02X}{int(g*255):02X}{int(b*255):02X}' 
-              for r, g, b, _ in colormap(np.linspace(0, 1, num_groups))]
-
-    # Assign colors to each group
-    group_colors = {group: color for group, color in zip(group_order, colors)}
-
-    # Order metagenes
-    ordered_metagenes = []
-    for group in group_order:
-        ordered_metagenes.extend(sorted(grouped_metagenes[group]))
-
-    # Metagene to meta mapping (using df_dict directly, no iterrows)
+    
+    # Map metagenes to meta_ids
     metagene_to_meta = {}
     for meta_id, genes in df_dict.items():
         for gene in genes:
             if gene not in metagene_to_meta:
                 metagene_to_meta[gene] = []
             metagene_to_meta[gene].append(meta_id)
-    #print(metagene_to_meta)
-
-    # Network calculation logic
+    
+    # Create edges
     edges = []
-    for i in range(len(ordered_metagenes)):
-        for j in range(i + 1, len(ordered_metagenes)):
-            meta_groups_1 = set(metagene_to_meta.get(ordered_metagenes[i], []))
-            meta_groups_2 = set(metagene_to_meta.get(ordered_metagenes[j], []))
+    for i in range(len(unique_metagenes)):
+        for j in range(i + 1, len(unique_metagenes)):
+            meta_groups_1 = set(metagene_to_meta.get(unique_metagenes[i], []))
+            meta_groups_2 = set(metagene_to_meta.get(unique_metagenes[j], []))
             shared_meta_groups = meta_groups_1.intersection(meta_groups_2)
             num_shared = len(shared_meta_groups)
-
-            if num_shared >= threshold and num_shared>=1:
+            
+            if num_shared >= threshold:
                 edges.append({
-                    'source': ordered_metagenes[i],
-                    'target': ordered_metagenes[j],
-                    'shared_groups': list(shared_meta_groups),
+                    'source': unique_metagenes[i],
+                    'target': unique_metagenes[j],
                     'num_shared': num_shared
                 })
-
-    # Assign the same red color to all nodes
-    node_colors = {metagene: group_colors['_' + metagene.split('_')[-1]] for metagene in ordered_metagenes}
-
-
-    # Return the JSON response with all necessary data
-    return JsonResponse({
-        'metagenes': ordered_metagenes,
-        'edges': edges,
-        'groups': group_order,
-        'group_colors': group_colors,  # Dictionary mapping groups to colors
-        'node_colors': node_colors,  # Dictionary mapping each metagene to its color
-        'meta_data': df_dict
-    })
+    
+    # Create nodes and links with widths proportional to num_shared
+    nodes = [{"name": m, "symbolSize": 10, "category": group_order.index('_' + m.split('_')[-1])} for m in unique_metagenes]
+    links = [
+        {
+            "source": e['source'], 
+            "target": e['target'], 
+            "value": e['num_shared'],
+            "lineStyle": {
+                "width": e['num_shared'] * 2,  # Multiply by 2 to make width more visible
+                "opacity": 0.7,
+                "curveness": 0.3
+            }
+        } for e in edges
+    ]
+    categories = [{"name": g} for g in group_order]
+    
+    # Create graph with pyecharts
+    graph = (
+        Graph(init_opts=opts.InitOpts(width="1000px", height="600px"))
+        .add(
+            "",
+            nodes=nodes,
+            links=links,
+            categories=categories,
+            layout="circular",
+            is_rotate_label=True,
+            linestyle_opts=opts.LineStyleOpts(curve=0.3),
+            label_opts=opts.LabelOpts(position="right"),
+        )
+        .set_global_opts(
+            title_opts=opts.TitleOpts(title="Metagene Network"),
+            legend_opts=opts.LegendOpts(orient="vertical", pos_left="2%", pos_top="20%"),
+            tooltip_opts=opts.TooltipOpts(
+                formatter="{b}: {c}"
+            ),
+        )
+    )
+    
+    # Return the rendered graph HTML
+    return JsonResponse({"graph_html": graph.render_embed()})
     
     
 @auth_required

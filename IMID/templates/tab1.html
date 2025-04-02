@@ -1301,6 +1301,45 @@ function run(num)
 	});
     
 }
+function getMetagenes(num){
+    url='/ica/metagenes/?type=ica';
+	url+='&cID='+clientUniqueID;
+	$('.btn').attr('disabled',true);
+	$.ajax({
+			url:url,
+			dataType:'text',
+			cache:false,
+			contentType:false,
+			processData:false,
+			type:'get',
+			async:true,
+			beforeSend:function(){
+			$('#loader').show();
+			},
+			complete:function(){
+			$('#loader').hide();
+			},
+			success:function(response){
+				$('.btn').attr('disabled',false);
+				const blob = new Blob([response], { type: 'text/csv' });
+   				 // Create a link element to trigger the download
+				const link = document.createElement('a');
+				link.href = window.URL.createObjectURL(blob);
+				link.download = 'export.csv';
+				// Append the link to the document and trigger a click event
+				document.body.appendChild(link);
+				link.click();
+
+				// Remove the link from the document
+				document.body.removeChild(link);
+			},
+			error:function(response){
+				alert(response.responseText);
+				$('.btn').attr('disabled',false);
+				return;
+			}
+	});
+}
   </script>
   
   <style>
