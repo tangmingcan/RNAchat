@@ -121,12 +121,10 @@ In constants.py, there are a few global parameters:
 
 ## System Introduction
 ### Platform Features:
-```
 Metapathway Analysis
 Associatioin Analysis![image](https://github.com/user-attachments/assets/97da4c47-9e21-4d30-b0b8-bb9736632bb6)
 Double Machine Learning (DML) Analysis![image](https://github.com/user-attachments/assets/34caa64a-fdd3-4c23-a409-e89c5a7ca493)
 Data Visualisation![image](https://github.com/user-attachments/assets/b1c7f7b8-0e2a-44fb-b19f-a72dbe2b7573)
-```
 ### Materials and Methods
 #### Workflow overview
 ##### A - Data Upload 
