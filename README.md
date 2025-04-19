@@ -117,8 +117,8 @@ Reload Nginx to apply the changes:`sudo systemctl reload nginx`
 #### Step 10: Constants settings
 In constants.py, there are a few global parameters:
 ```
-**ALLOW_UPLOAD = True # This is to control the platform whether to allow user to upload data**
-**SHAP_PLOT_DATASET='X' # This is for SHAP importance plot and dependence plot based on X/X_train/X_test dataset.**
+ALLOW_UPLOAD = True # This is to control the platform whether to allow user to upload data
+SHAP_PLOT_DATASET='X' # This is for SHAP importance plot and dependence plot based on X/X_train/X_test dataset.
 ```
 
 ## System Introduction
