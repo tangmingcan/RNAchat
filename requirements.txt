@@ -21,6 +21,6 @@ rnanorm
 django-simple-captcha
 stabilized-ica
 decoupler
-git+https://github.com/ncaptier/sica-omics.git
+git+https://github.com/ncaptier/sica-omics
 econml
 pyecharts
