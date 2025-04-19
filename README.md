@@ -16,8 +16,8 @@ To copy RNAcompare from GitHub and make it runnable on your local machine, you c
 #### Step 1: Clone the Repository
 First, clone the repository from GitHub to your local machine.
 ```bash
-https://github.com/tangmingcan/RNAcompare.git
-cd RNAcompare
+https://github.com/tangmingcan/RNAchat.git
+cd RNAchat
 ```
 #### Step 2: Set Up a Virtual Environment(for development, we use python 3.11)
 It's a good practice to use a virtual environment to manage your project's dependencies.
