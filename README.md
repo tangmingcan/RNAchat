@@ -180,6 +180,15 @@ Then, we can draw the matrixplot by each metapathways or each batch. In this exa
 
 ![image](https://github.com/user-attachments/assets/b0d3312f-6a05-4404-88b1-28b4c5662821)
 
+#### 6. Run Association analysis and check where is metapathway_5 (containing metagene_3) using SHAP plot.
+
+![image](https://github.com/user-attachments/assets/ca80caec-1e6f-4cca-8ef2-e872f2f4282f)
+
+
+![image](https://github.com/user-attachments/assets/9d76eff6-164a-4ab8-8bad-87af558bbb70)
+
+
+
 
 
 
