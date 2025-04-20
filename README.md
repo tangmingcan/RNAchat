@@ -204,7 +204,7 @@ Let's draw Anti-TNF.
 Here, matapathway_5 is ordered before metapathway_2.
 
 
-The following is enrichment analysis  of metagene_3,  from RNAcompare
+The following is enrichment analysis  of metagene_3, metagene_2 from RNAcompare
 
 **metagene_3**
 ![image](https://github.com/user-attachments/assets/35fd6a73-bbbf-4ad1-bf75-3b97bf67da8e)
