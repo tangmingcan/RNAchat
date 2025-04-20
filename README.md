@@ -169,7 +169,7 @@ We then can do the metapathway analysis to check the components of each and adju
 
 ![image](https://github.com/user-attachments/assets/9ba46a04-5d05-4f9a-adae-1871e0859d66)
 
-**Note, we already know that metagene_3 is IFN signaling**
+**Note, we already know that metagene_3 is IFN signaling from RNAcompare.**
 
 Here is the heatmap plot checking the relationship of metapathways.
 ![image](https://github.com/user-attachments/assets/1016fd2a-4e71-46d9-a0ba-b424f5ffd5d3)
