@@ -24,3 +24,4 @@ decoupler
 git+https://github.com/ncaptier/sica-omics
 econml
 pyecharts
+jwt
