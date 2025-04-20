@@ -953,10 +953,10 @@ def dataVisual2(request):
     df_dict_temp = {i['index']: i['inputs'] for i in df_dict}
     df_dict = df_dict_temp
     
-    unique_metagenes = sorted([i for i in usr.metageneCompose[0].columns])
-    group_order = sorted(set(['_' + i.split('_')[-1] for i in usr.metageneCompose[0].columns]))
-    
-    grouped_metagenes = {suffix: [] for suffix in group_order}
+    unique_metagenes = sorted(                      
+        [i for i in usr.metageneCompose[0].columns],
+        key=lambda x: x.split('_')[-1]              
+    )                                               
     for metagene in unique_metagenes:
         for suffix in group_order:
             if metagene.endswith(suffix):
@@ -997,6 +997,8 @@ def dataVisual2(request):
     min_size = 10
     max_size = 50
     max_degree = max(node_degrees.values()) if node_degrees else 1  # Avoid division by zero
+    if max_degree==0:
+        max_degree=1
     scale_factor = (max_size - min_size) / max_degree
     
     # Create nodes with dynamic size based on connections (degree)
