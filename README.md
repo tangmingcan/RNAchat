@@ -149,6 +149,11 @@ In this section, user can use network plot to visualise the interactions among m
 
 ## Result & Demonstration
 ### Data Collection
+#### 1. First we need to import ICA processed 1st level data from RNAcompare or user can calculate manually. ID_REF is the compulsory field.
+   ![image](https://github.com/user-attachments/assets/f6c7700b-76db-4550-a616-21404425c389)
+#### 2. Next we import the clinical data.
+![image](https://github.com/user-attachments/assets/5a3dc8a9-5361-449c-b4e8-6df9aa6f0f18)
+
 
 
 
