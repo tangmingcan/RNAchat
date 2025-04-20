@@ -197,7 +197,7 @@ Now, let's draw Rituximab.
 
 As we can see metapathway_2 is ordered before metapathway_5 now.
 
-Lets draw Anti-TNF.
+Let's draw Anti-TNF.
 
 ![image](https://github.com/user-attachments/assets/97b6fd4a-fd68-4ae6-909b-97b7b22ee0a3)
 
