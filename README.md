@@ -153,11 +153,35 @@ In this section, user can use network plot to visualise the interactions among m
    ![image](https://github.com/user-attachments/assets/f6c7700b-76db-4550-a616-21404425c389)
 #### 2. Next we import the clinical data.
 ![image](https://github.com/user-attachments/assets/5a3dc8a9-5361-449c-b4e8-6df9aa6f0f18)
-#### 3. Run 2nd level ICA(metapathway)
+
+#### 3. Activate the labels apart from LABEL itself
+![image](https://github.com/user-attachments/assets/50a9646e-763f-4f40-9bfa-e295e91a9cda)
+
+#### 4. Run 2nd level ICA(metapathway)
 ![image](https://github.com/user-attachments/assets/b3adeda6-f804-4ffe-bb93-d8c840842abf)
 
 and we can download the result.
-![image](https://github.com/user-attachments/assets/dc2bf19c-b6fd-49d7-b03b-b0f07c597662)
+![image](https://github.com/user-attachments/assets/56e95fc9-b6bb-4b20-b357-04d0d6461fc1)
+
+#### 5. Data Visualisation I
+We then can do the metapathway analysis to check the components of each and adjust the threshold.
+![image](https://github.com/user-attachments/assets/01859e63-7efb-4884-87ee-2dc1b87efc10)
+
+![image](https://github.com/user-attachments/assets/b8b57f70-f22d-4e84-998e-8e8f0fecd47a)
+
+Here is the heatmap plot checking the relationship of metapathways.
+![image](https://github.com/user-attachments/assets/1016fd2a-4e71-46d9-a0ba-b424f5ffd5d3)
+
+Then, we can draw the matrixplot by each metapathways or each batch. In this example we only have one batch. So we draw it by metapathway.
+![image](https://github.com/user-attachments/assets/4058350a-f78c-4847-b9a4-2bcaf67e72cc)
+
+![image](https://github.com/user-attachments/assets/b0d3312f-6a05-4404-88b1-28b4c5662821)
+
+
+
+
+
+
 
 
 
