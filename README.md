@@ -175,6 +175,7 @@ Here is the heatmap plot checking the relationship of metapathways.
 ![image](https://github.com/user-attachments/assets/1016fd2a-4e71-46d9-a0ba-b424f5ffd5d3)
 
 Then, we can draw the matrixplot by each metapathways or each batch. In this example we only have one batch. So we draw it by metapathway.
+
 ![image](https://github.com/user-attachments/assets/4058350a-f78c-4847-b9a4-2bcaf67e72cc)
 
 ![image](https://github.com/user-attachments/assets/b0d3312f-6a05-4404-88b1-28b4c5662821)
