@@ -153,6 +153,12 @@ In this section, user can use network plot to visualise the interactions among m
    ![image](https://github.com/user-attachments/assets/f6c7700b-76db-4550-a616-21404425c389)
 #### 2. Next we import the clinical data.
 ![image](https://github.com/user-attachments/assets/5a3dc8a9-5361-449c-b4e8-6df9aa6f0f18)
+#### 3. Run 2nd level ICA(metapathway)
+![image](https://github.com/user-attachments/assets/b3adeda6-f804-4ffe-bb93-d8c840842abf)
+
+and we can download the result.
+![image](https://github.com/user-attachments/assets/dc2bf19c-b6fd-49d7-b03b-b0f07c597662)
+
 
 
 
