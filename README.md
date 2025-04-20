@@ -212,6 +212,10 @@ The following is enrichment analysis  of metagene_3, metagene_2 from RNAcompare
 **metagene_2**
 ![image](https://github.com/user-attachments/assets/e2c93dff-fa2a-4d88-b20d-1599df567f3b)
 
+#### 8. Data Visualisation II- Interaction of metagenes
+![image](https://github.com/user-attachments/assets/5204a5e2-f523-4988-901c-56e17173117c)
+
+
 
 
 
