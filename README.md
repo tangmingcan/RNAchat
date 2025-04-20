@@ -16,8 +16,8 @@ To copy RNAcompare from GitHub and make it runnable on your local machine, you c
 #### Step 1: Clone the Repository
 First, clone the repository from GitHub to your local machine.
 ```bash
-https://github.com/tangmingcan/RNAcompare.git
-cd RNAcompare
+https://github.com/tangmingcan/RNAchat.git
+cd RNAchat
 ```
 #### Step 2: Set Up a Virtual Environment(for development, we use python 3.11)
 It's a good practice to use a virtual environment to manage your project's dependencies.
@@ -116,17 +116,17 @@ proxy_set_header X-Real-IP $remote_addr;
 Reload Nginx to apply the changes:`sudo systemctl reload nginx`
 #### Step 10: Constants settings
 In constants.py, there are a few global parameters:
-**ALLOW_UPLOAD = True # This is to control the platform whether to allow user to upload data**
-**SHAP_PLOT_DATASET='X' # This is for SHAP importance plot and dependence plot based on X/X_train/X_test dataset.**
+```
+ALLOW_UPLOAD = True # This is to control the platform whether to allow user to upload data
+SHAP_PLOT_DATASET='X' # This is for SHAP importance plot and dependence plot based on X/X_train/X_test dataset.
+```
 
 ## System Introduction
 ### Platform Features:
-```
-Metapathway Analysis
-Associatioin Analysis![image](https://github.com/user-attachments/assets/97da4c47-9e21-4d30-b0b8-bb9736632bb6)
-Double Machine Learning (DML) Analysis![image](https://github.com/user-attachments/assets/34caa64a-fdd3-4c23-a409-e89c5a7ca493)
-Data Visualisation![image](https://github.com/user-attachments/assets/b1c7f7b8-0e2a-44fb-b19f-a72dbe2b7573)
-```
+##### Metapathway Analysis
+##### Associatioin Analysis
+##### Double Machine Learning (DML) Analysis
+##### Data Visualisation
 ### Materials and Methods
 #### Workflow overview
 ##### A - Data Upload 
@@ -147,8 +147,121 @@ We used DML introduced from RNAcompare to bypass data hamalisation for comparsio
 ##### F - Data Visualisation II
 In this section, user can use network plot to visualise the interactions among metagenes/cell types for finding the most frequent/significant metagenes/cell types.
 
-## Result & Demonstration
+## Result & Demonstration (Case I -drug response)
 ### Data Collection
+#### 1. First we need to import ICA processed 1st level data from RNAcompare or user can calculate manually. ID_REF is the compulsory field.
+   ![image](https://github.com/user-attachments/assets/f6c7700b-76db-4550-a616-21404425c389)
+#### 2. Next we import the clinical data.
+![image](https://github.com/user-attachments/assets/5a3dc8a9-5361-449c-b4e8-6df9aa6f0f18)
+
+#### 3. Activate the labels apart from LABEL itself
+![image](https://github.com/user-attachments/assets/50a9646e-763f-4f40-9bfa-e295e91a9cda)
+
+#### 4. Run 2nd level ICA(metapathway)
+![image](https://github.com/user-attachments/assets/b3adeda6-f804-4ffe-bb93-d8c840842abf)
+
+and we can download the result.
+![image](https://github.com/user-attachments/assets/56e95fc9-b6bb-4b20-b357-04d0d6461fc1)
+
+#### 5. Data Visualisation I
+We then can do the metapathway analysis to check the components of each and adjust the threshold.
+![image](https://github.com/user-attachments/assets/01859e63-7efb-4884-87ee-2dc1b87efc10)
+
+![image](https://github.com/user-attachments/assets/9ba46a04-5d05-4f9a-adae-1871e0859d66)
+
+**Note, we already know that metagene_3 is IFN signaling from RNAcompare.**
+
+Here is the heatmap plot checking the relationship of metapathways.
+![image](https://github.com/user-attachments/assets/1016fd2a-4e71-46d9-a0ba-b424f5ffd5d3)
+
+Then, we can draw the matrixplot by each metapathways or each batch. In this example we only have one batch. So we draw it by metapathway.
+
+![image](https://github.com/user-attachments/assets/4058350a-f78c-4847-b9a4-2bcaf67e72cc)
+
+![image](https://github.com/user-attachments/assets/b0d3312f-6a05-4404-88b1-28b4c5662821)
+
+#### 6. Run Association analysis and check where is metapathway_5 (containing metagene_3) using SHAP plot.
+
+![image](https://github.com/user-attachments/assets/ca80caec-1e6f-4cca-8ef2-e872f2f4282f)
+
+
+![image](https://github.com/user-attachments/assets/9d76eff6-164a-4ab8-8bad-87af558bbb70)
+
+#### 7. Now, let's draw Rituximab and anti-TNF separately. We use DML tab and treat them as 2 batches separately.
+
+![image](https://github.com/user-attachments/assets/91c5420f-01e4-46fc-ba09-db119e021ba8)
+
+Now, let's draw Rituximab.
+
+![image](https://github.com/user-attachments/assets/94ca53a5-f6f6-48fb-9f51-72c0ab8087a1)
+
+As we can see metapathway_2 is ordered before metapathway_5 now.
+
+Let's draw Anti-TNF.
+
+![image](https://github.com/user-attachments/assets/97b6fd4a-fd68-4ae6-909b-97b7b22ee0a3)
+
+Here, matapathway_5 is ordered before metapathway_2.
+
+
+The following is enrichment analysis  of metagene_3, metagene_2 from RNAcompare
+
+**metagene_3**
+![image](https://github.com/user-attachments/assets/35fd6a73-bbbf-4ad1-bf75-3b97bf67da8e)
+
+**metagene_2**
+![image](https://github.com/user-attachments/assets/e2c93dff-fa2a-4d88-b20d-1599df567f3b)
+
+#### 8. Data Visualisation II- Interaction of metagenes
+![image](https://github.com/user-attachments/assets/5204a5e2-f523-4988-901c-56e17173117c)
+
+
+## Result & Demonstration (Case II -host vs parasite)
+### Data collection
+#### 1. We first upload 1st level ICA processed data for both plasmodium & human
+![image](https://github.com/user-attachments/assets/0f258d2d-4cf1-4747-9779-3f7aafa0ad3a)
+
+#### 2. We upload clinic data, and set 0 to the columns of parasites but keep the IDs.
+![image](https://github.com/user-attachments/assets/99a1e862-be9b-4361-9a94-a7d7bca9e4e5)
+
+#### 3. We ran metapathway, the 2nd level ICA.
+![image](https://github.com/user-attachments/assets/0ef568a2-1c79-4e23-9c9a-72df8f8d17a1)
+
+#### 4. We check the components of metapathways.
+![image](https://github.com/user-attachments/assets/88ad5edd-0c9d-4603-aeed-295d33a90f72)
+
+#### 5. We run association analysis using DML, because we only care about human batch.
+![image](https://github.com/user-attachments/assets/2ae46b0f-33f5-4900-957e-3a393e51a103)
+
+#### 6. We get SHAP plot.
+![image](https://github.com/user-attachments/assets/c2afc19a-5efb-427f-ac88-ffbda8f845ad)
+
+#### 7. Relationship plot.
+![image](https://github.com/user-attachments/assets/a71817c2-b53a-4c6b-977b-4d5a0792f937)
+
+![image](https://github.com/user-attachments/assets/88f9d341-d23b-46f8-a724-7e6a849b0e2c)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
