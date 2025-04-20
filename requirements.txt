@@ -26,3 +26,4 @@ econml
 pyecharts
 jwt
 xgboost
+shap==0.38.1
