@@ -187,6 +187,36 @@ Then, we can draw the matrixplot by each metapathways or each batch. In this exa
 
 ![image](https://github.com/user-attachments/assets/9d76eff6-164a-4ab8-8bad-87af558bbb70)
 
+#### 7. Now, let's draw Rituximab and anti-TNF separately. We use DML tab and treat them as 2 batches separately.
+
+![image](https://github.com/user-attachments/assets/91c5420f-01e4-46fc-ba09-db119e021ba8)
+
+Now, let's draw Rituximab.
+
+![image](https://github.com/user-attachments/assets/94ca53a5-f6f6-48fb-9f51-72c0ab8087a1)
+
+As we can see metapathway_2 is ordered before metapathway_5 now.
+
+Lets draw Anti-TNF.
+
+![image](https://github.com/user-attachments/assets/97b6fd4a-fd68-4ae6-909b-97b7b22ee0a3)
+
+Here, matapathway_5 is ordered before metapathway_2.
+
+
+The following is enrichment analysis  of metagene_3,  from RNAcompare
+
+**metagene_3**
+![image](https://github.com/user-attachments/assets/35fd6a73-bbbf-4ad1-bf75-3b97bf67da8e)
+
+**metagene_2**
+![image](https://github.com/user-attachments/assets/e2c93dff-fa2a-4d88-b20d-1599df567f3b)
+
+
+
+
+
+
 
 
 
