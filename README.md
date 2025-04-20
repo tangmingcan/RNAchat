@@ -167,7 +167,9 @@ and we can download the result.
 We then can do the metapathway analysis to check the components of each and adjust the threshold.
 ![image](https://github.com/user-attachments/assets/01859e63-7efb-4884-87ee-2dc1b87efc10)
 
-![image](https://github.com/user-attachments/assets/b8b57f70-f22d-4e84-998e-8e8f0fecd47a)
+![image](https://github.com/user-attachments/assets/9ba46a04-5d05-4f9a-adae-1871e0859d66)
+
+** Note, we already know that metagene_3 is IFN signaling. **
 
 Here is the heatmap plot checking the relationship of metapathways.
 ![image](https://github.com/user-attachments/assets/1016fd2a-4e71-46d9-a0ba-b424f5ffd5d3)
