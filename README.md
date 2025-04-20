@@ -231,10 +231,18 @@ The following is enrichment analysis  of metagene_3, metagene_2 from RNAcompare
 ![image](https://github.com/user-attachments/assets/88ad5edd-0c9d-4603-aeed-295d33a90f72)
 
 #### 5. We run association analysis using DML, because we only care about human batch.
-![image](https://github.com/user-attachments/assets/5922a23f-3e19-43ed-8eb6-33b7c5b87cda)
+![image](https://github.com/user-attachments/assets/2ae46b0f-33f5-4900-957e-3a393e51a103)
 
 #### 6. We get SHAP plot.
-![image](https://github.com/user-attachments/assets/19b1a6e2-b804-4f98-9e3b-f7ef12490e05)
+![image](https://github.com/user-attachments/assets/c2afc19a-5efb-427f-ac88-ffbda8f845ad)
+
+#### 7. Relationship plot.
+![image](https://github.com/user-attachments/assets/a71817c2-b53a-4c6b-977b-4d5a0792f937)
+
+![image](https://github.com/user-attachments/assets/88f9d341-d23b-46f8-a724-7e6a849b0e2c)
+
+
+
 
 
 
