@@ -147,7 +147,7 @@ We used DML introduced from RNAcompare to bypass data hamalisation for comparsio
 ##### F - Data Visualisation II
 In this section, user can use network plot to visualise the interactions among metagenes/cell types for finding the most frequent/significant metagenes/cell types.
 
-## Result & Demonstration
+## Result & Demonstration (Case I -drug response)
 ### Data Collection
 #### 1. First we need to import ICA processed 1st level data from RNAcompare or user can calculate manually. ID_REF is the compulsory field.
    ![image](https://github.com/user-attachments/assets/f6c7700b-76db-4550-a616-21404425c389)
@@ -214,6 +214,30 @@ The following is enrichment analysis  of metagene_3, metagene_2 from RNAcompare
 
 #### 8. Data Visualisation II- Interaction of metagenes
 ![image](https://github.com/user-attachments/assets/5204a5e2-f523-4988-901c-56e17173117c)
+
+
+## Result & Demonstration (Case II -host vs parasite)
+### Data collection
+#### 1. We first upload 1st level ICA processed data for both plasmodium & human
+![image](https://github.com/user-attachments/assets/0f258d2d-4cf1-4747-9779-3f7aafa0ad3a)
+
+#### 2. We upload clinic data, and set 0 to the columns of parasites but keep the IDs.
+![image](https://github.com/user-attachments/assets/99a1e862-be9b-4361-9a94-a7d7bca9e4e5)
+
+#### 3. We ran metapathway, the 2nd level ICA.
+![image](https://github.com/user-attachments/assets/0ef568a2-1c79-4e23-9c9a-72df8f8d17a1)
+
+#### 4. We check the components of metapathways.
+![image](https://github.com/user-attachments/assets/88ad5edd-0c9d-4603-aeed-295d33a90f72)
+
+#### 5. We run association analysis using DML, because we only care about human batch.
+![image](https://github.com/user-attachments/assets/5922a23f-3e19-43ed-8eb6-33b7c5b87cda)
+
+#### 6. We get SHAP plot.
+![image](https://github.com/user-attachments/assets/19b1a6e2-b804-4f98-9e3b-f7ef12490e05)
+
+
+
 
 
 
