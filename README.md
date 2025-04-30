@@ -241,7 +241,65 @@ The following is enrichment analysis  of metagene_3, metagene_2 from RNAcompare
 
 ![image](https://github.com/user-attachments/assets/88f9d341-d23b-46f8-a724-7e6a849b0e2c)
 
+## Result & Demonstration (Case III - RA & MS)
+We use a new case based on the paper [Unveiling the ageing-related genes in diagnosing osteoarthritis with metabolic syndrome by integrated bioinformatics analysis and machine learning](https://www.tandfonline.com/doi/full/10.1080/21691401.2025.2471762?rfr_dat=cr_pub++0pubmed&url_ver=Z39.88-2003&rfr_id=ori%3Arid%3Acrossref.org#abstract), what we do will not only find the related signatures mentioned by the paper, but also we can find their corresponding pathways and metapathways in a supervised manner (importance to age).
 
+The paper still has limitations: (1) It didn't fully use the clinical feature 'age' in the datasets, which can be used in the supervised ML rather than using an external aging-related Gene dataset to find overlapping genes. (2) Didn't find the corresponding pathways and metapathways and didn't prioritize them (not full transparent in terms of mechanism interpretation).
+
+#### 1. Data Upload for RNAcompare.
+A slightly different from the datasets used by the paper, we used PEAC(synovium, refed by RNAcompare) and GSE58795(Metabolistic syndrom-PBMC)
+
+These are the data we load into RNAcompare:
+![image](https://github.com/user-attachments/assets/6f6cd858-cbb0-4adf-8dea-eb4c98e57979)
+
+![image](https://github.com/user-attachments/assets/6b496a60-bccc-43f3-9c19-22d15d962d7d)
+
+#### 2. Data Upload for RNAchat.
+We then do the 1st level ICA in RNAcompare, extracting 10 components for each disease. Then import this data to RNAchat.
+
+![image](https://github.com/user-attachments/assets/87c4782d-3807-4bc8-a62d-05e764c8b5f6)
+
+![image](https://github.com/user-attachments/assets/587ff89b-cfe9-4a94-9d3a-82e346cb2662)
+
+#### 3. We ran metapathway, the 2nd level ICA and check the components.
+![image](https://github.com/user-attachments/assets/4039cee5-f95e-4058-a298-00e6248285c6)
+
+#### 4. We ran Causal Forests in terms of age.
+![image](https://github.com/user-attachments/assets/3cd85f7b-607d-4eaa-851c-28ae662ca56c)
+
+#### 5. We checked the SHAP importance plot.
+Here we just care about the width of each feature. Then we can prioritize the importance of metagenes.
+![image](https://github.com/user-attachments/assets/e082d083-ddfc-4d40-9fa3-1b01fb3cb8a2)
+
+#### 6. Enrichment analysis for metagenes.
+Metagene_8_ms:
+
+![image](https://github.com/user-attachments/assets/b1231cae-ea33-4941-a74e-14caf9916d93)
+
+You can check the important signatures whether they are in the supp material 1 of the original paper.
+
+For the most important gene the original paper mentioned: CEBPB, we found it via the visualization plot:
+
+![image](https://github.com/user-attachments/assets/be74280f-123a-4277-ab86-951848880040)
+
+Here we can see metagene_4_RA is the most freq gene interacting with others. So we checked its enrichment result.
+You can see CEBPB is involved in pathway: WP_NETWORK_MAP_OF_SARSCOV2_SIGNALING
+![image](https://github.com/user-attachments/assets/3dd8bb54-51fe-4ae2-bae1-ff8069785f26)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+)
 
 
 
