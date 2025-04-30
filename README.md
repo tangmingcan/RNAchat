@@ -300,20 +300,6 @@ You can see CEBPB is involved in pathway: WP_NETWORK_MAP_OF_SARSCOV2_SIGNALING
 
 
 
-)
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
