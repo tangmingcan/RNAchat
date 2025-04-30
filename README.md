@@ -248,7 +248,7 @@ The paper still has limitations: (1) It didn't fully use the clinical feature 'a
 
 #### 1. Data Upload for RNAcompare.
 A slightly different from the datasets used by the paper, we used PEAC(synovium, refed by RNAcompare) and GSE58795(Metabolistic syndrom-PBMC)
-Note, PEAC is normalized(RNA-seq) and GSE58795 is raw data(microarray), but since we don't need batch correction any more, we can combine them via RNAcompare directly!
+**Note, PEAC is normalized(RNA-seq) and GSE58795 is raw data(microarray), but since we don't need batch correction any more, we can combine them via RNAcompare directly!(exciting?!)**
 
 These are the data we load into RNAcompare:
 ![image](https://github.com/user-attachments/assets/6f6cd858-cbb0-4adf-8dea-eb4c98e57979)
