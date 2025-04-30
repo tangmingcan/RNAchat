@@ -283,7 +283,7 @@ For the most important gene the original paper mentioned: CEBPB, we found it via
 
 ![image](https://github.com/user-attachments/assets/be74280f-123a-4277-ab86-951848880040)
 
-Here we can see metagene_4_RA is the most freq gene interacting with others. So we checked its enrichment result.
+Here we can see metagene_4_RA is the most freq metagene interacting with others. So we checked its enrichment result.
 You can see CEBPB is involved in pathway: WP_NETWORK_MAP_OF_SARSCOV2_SIGNALING
 ![image](https://github.com/user-attachments/assets/3dd8bb54-51fe-4ae2-bae1-ff8069785f26)
 
