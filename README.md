@@ -244,7 +244,7 @@ The following is enrichment analysis  of metagene_3, metagene_2 from RNAcompare
 ## Result & Demonstration (Case III - RA & MS)
 We use a new case based on the paper [Unveiling the ageing-related genes in diagnosing osteoarthritis with metabolic syndrome by integrated bioinformatics analysis and machine learning](https://www.tandfonline.com/doi/full/10.1080/21691401.2025.2471762?rfr_dat=cr_pub++0pubmed&url_ver=Z39.88-2003&rfr_id=ori%3Arid%3Acrossref.org#abstract), what we do will not only find the related signatures mentioned by the paper, but also we can find their corresponding pathways and metapathways in a supervised manner (importance to age).
 
-The paper still has limitations: (1) It didn't fully use the clinical feature 'age' in the datasets, which can be used in the supervised ML rather than using an external aging-related Gene dataset to find overlapping genes. (2) Didn't find the corresponding pathways and metapathways and didn't prioritize them (not full transparent in terms of mechanism interpretation).(3) It needs control/healthy records for DE. RNAchat doesn't need healthy records!
+The paper still has limitations: (1) It didn't fully use the clinical feature 'age' in the datasets, which can be used in the supervised ML rather than using an external aging-related Gene dataset to find overlapping genes. (2) Didn't find the corresponding pathways and metapathways and didn't prioritize them (not fully transparent in terms of mechanism interpretation).(3) It needs control/healthy records for DE. RNAchat doesn't need healthy records!
 
 #### 1. Data Upload for RNAcompare.
 A slightly different from the datasets used by the paper, we used PEAC(synovium, refed by RNAcompare) and GSE58795(Metabolistic syndrom-PBMC)
